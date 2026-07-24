@@ -23,7 +23,7 @@ define Package/$(PKG_NAME)
   SUBMENU:=3. Applications
   TITLE:=olcrtcwrt and WDTT client management
   URL:=https://github.com/win64exe/OlcrtcWRT
-  DEPENDS:=+luci-base +curl +ca-bundle +ca-certificates +dnsmasq +kmod-wireguard +wireguard-tools +jq +kmod-tun +rpcd-mod-ucode +rpcd-mod-file +ucode +ucode-mod-fs +ucode-mod-uci
+  DEPENDS:=+luci-base +curl +ca-bundle +ca-certificates +dnsmasq +wireguard-tools +jq +rpcd-mod-ucode +rpcd-mod-file +ucode +ucode-mod-fs +ucode-mod-uci
   PKGARCH:=all
 endef
 
