@@ -42,9 +42,10 @@ sh install.sh uninstall
 
 ```bash
 BASE="https://raw.githubusercontent.com/win64exe/OlcrtcWRT/refs/heads/dev"
-wget -qO /tmp/install.sh "$BASE/install.sh"
-wget -qO /tmp/install.sh.sha256 "$BASE/install.sh.sha256"
-sha256sum -c /tmp/install.sh.sha256 && sh /tmp/install.sh
+mkdir -p /tmp/olcrtcwrt-install && cd /tmp/olcrtcwrt-install
+wget -qO install.sh "$BASE/install.sh"
+wget -qO install.sh.sha256 "$BASE/install.sh.sha256"
+sha256sum -c install.sh.sha256 && sh install.sh
 ```
 
 ## Важное примечание
