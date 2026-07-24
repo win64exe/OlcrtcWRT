@@ -48,6 +48,9 @@ wget -qO install.sh.sha256 "$BASE/install.sh.sha256"
 sha256sum -c install.sh.sha256 && sh install.sh
 ```
 
+Если в системе нет `wget`, замените `wget -qO файл URL` на `curl -fsSL -o файл URL`.
+
+
 ## Важное примечание
 
 Если вы устанавливаете `.apk` вручную на минимальный образ OpenWrt, убедитесь, что в системе уже есть модули ядра `kmod-wireguard` и `kmod-tun` (или установите их отдельно через `apk`/`opkg`). При использовании `install.sh` это не требуется — он скачивает и устанавливает всё необходимое.
