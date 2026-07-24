@@ -25,7 +25,7 @@ define Package/$(PKG_NAME)
   URL:=https://github.com/win64exe/OlcrtcWRT
   DEPENDS:=+luci-base +uhttpd +curl +ca-bundle +ca-certificates +libustream-wolfssl \
 	+coreutils +nftables +kmod-nft-nat +dnsmasq +kmod-wireguard +wireguard-tools \
-	+jq +iputils-ping +sing-box +kmod-tun +rpcd-mod-ucode +rpcd-mod-file +ucode +ucode-mod-fs +ucode-mod-uci
+	+jq +iputils-ping +kmod-tun +rpcd-mod-ucode +rpcd-mod-file +ucode +ucode-mod-fs +ucode-mod-uci
   PKGARCH:=all
 endef
 
