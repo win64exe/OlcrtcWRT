@@ -50,6 +50,18 @@ define Package/$(PKG_NAME)/conffiles
 /etc/config/olcrtcwrt
 endef
 
+define Package/$(PKG_NAME)/postinst
+#!/bin/sh
+[ -x /etc/init.d/olcrtcwrt ] && /etc/init.d/olcrtcwrt enable
+exit 0
+endef
+
+define Package/$(PKG_NAME)/postrm
+#!/bin/sh
+[ -x /etc/init.d/olcrtcwrt ] && /etc/init.d/olcrtcwrt disable
+exit 0
+endef
+
 define Package/$(PKG_NAME)/install
 	$(CP) ./root/. $(1)/
 	$(CP) ./htdocs/. $(1)/
