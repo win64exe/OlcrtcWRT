@@ -10,7 +10,7 @@ set -e
 # -----------------------------------------------------------------------------
 PROJECT_REPO="win64exe/OlcrtcWRT"
 APK_PKG_VERSION="1.0.0-2"
-APK_TAG="v1.0.0"
+APK_TAG="v${APK_PKG_VERSION%%-*}"
 APK_NAME="luci-app-olcrtcwrt_${APK_PKG_VERSION}_all.apk"
 APK_NAME_PATTERN="luci-app-olcrtcwrt_.*_all\.apk"
 APK_FALLBACK_URL="https://github.com/$PROJECT_REPO/releases/download/${APK_TAG}/${APK_NAME}"
