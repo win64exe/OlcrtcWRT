@@ -1,0 +1,44 @@
+{
+	"admin/services/olcrtc": {
+		"title": "olcrtc / WDTT",
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": ["luci-app-olcrtc"]
+		},
+		"order": 60
+	},
+	"admin/services/olcrtc/sections": {
+		"title": "Sections",
+		"action": {
+			"type": "view",
+			"path": "olcrtc/sections"
+		},
+		"order": 1
+	},
+	"admin/services/olcrtc/settings": {
+		"title": "Settings",
+		"action": {
+			"type": "view",
+			"path": "olcrtc/settings"
+		},
+		"order": 2
+	},
+	"admin/services/olcrtc/diagnostics": {
+		"title": "Diagnostics",
+		"action": {
+			"type": "view",
+			"path": "olcrtc/diagnostics"
+		},
+		"order": 3
+	},
+	"admin/services/olcrtc/dashboard": {
+		"title": "Dashboard",
+		"action": {
+			"type": "view",
+			"path": "olcrtc/dashboard"
+		},
+		"order": 4
+	}
+}
