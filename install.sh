@@ -38,6 +38,13 @@ SING_BOX_BIN="${SING_BOX_DIR}/sing-box"
 TMP_DIR=""
 FETCHER=""
 
+setup_tmp_dir() {
+    if [ -z "$TMP_DIR" ]; then
+        TMP_DIR="$(mktemp -d /tmp/olcrtcwrt.XXXXXX 2>/dev/null || echo "/tmp/olcrtcwrt.$$")"
+        mkdir -p "$TMP_DIR"
+    fi
+}
+
 cleanup() {
     [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR"
 }
@@ -151,8 +158,7 @@ build_sing_box_url() {
     _name="sing-box-${_version}-linux-${_arch}"
 
     case "$_libc" in
-        musl)  _name="${_name}-musl" ;;
-        glibc) _name="${_name}-glibc" ;;
+        musl) _name="${_name}-musl" ;;
     esac
 
     printf 'https://github.com/%s/releases/download/%s/%s.tar.gz' "$1" "$_tag" "$_name"
@@ -184,15 +190,14 @@ install_sing_box_binary() {
     info "Architecture:     ${_arch}"
     info "C library:        ${_libc}"
 
-    TMP_DIR="$(mktemp -d /tmp/olcrtcwrt-sb.XXXXXX 2>/dev/null || echo "/tmp/olcrtcwrt-sb.$$")"
-    mkdir -p "$TMP_DIR"
+    setup_tmp_dir
 
     _url="$(build_sing_box_url "$1" "$_tag" "$_arch" "$_libc")"
     _archive="${TMP_DIR}/sing-box.tar.gz"
 
     info "Downloading sing-box archive..."
     if ! download_and_verify "$_url" "$_archive"; then
-        warn "Could not download ${_libc} build. Falling back to generic build."
+        warn "Could not download ${_libc} build. Falling back to generic (glibc) build."
         _url="$(build_sing_box_url "$1" "$_tag" "$_arch" "")"
         if ! download_and_verify "$_url" "$_archive"; then
             err "Failed to download sing-box. Please check your network or architecture."
@@ -371,7 +376,7 @@ install_apk_package() {
     fi
     info "Found: $_apk_url"
 
-    TMP_DIR="$(mktemp -d /tmp/olcrtcwrt-apk.XXXXXX 2>/dev/null || echo "/tmp/olcrtcwrt-apk.$$")"
+    setup_tmp_dir
     _apk_file="${TMP_DIR}/luci-app-olcrtcwrt.apk"
 
     info "Downloading .apk..."

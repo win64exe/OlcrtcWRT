@@ -11,7 +11,7 @@ OpenWrt LuCI application for managing olcrtcwrt (TCP-over-WebRTC) and WDTT (Wire
 
 ## Quick install
 
-Run as root on OpenWrt or a generic Linux system:
+Run as **root** on OpenWrt or a generic Linux system:
 
 ```bash
 sh install.sh
