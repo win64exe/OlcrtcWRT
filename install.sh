@@ -9,7 +9,8 @@ set -e
 # Configuration
 # -----------------------------------------------------------------------------
 PROJECT_REPO="win64exe/OlcrtcWRT"
-APK_NAME_PATTERN="luci-app-olcrtcwrt_.*\.apk"
+APK_NAME_PATTERN="luci-app-olcrtcwrt_.*_all\.apk"
+APK_FALLBACK_URL="https://github.com/$PROJECT_REPO/releases/download/v1.0.0/luci-app-olcrtcwrt_1.0.0-2_all.apk"
 SING_BOX_OFFICIAL="SagerNet/sing-box"
 SING_BOX_EXTENDED="shtorm-7/sing-box-extended"
 
@@ -354,7 +355,12 @@ uninstall_sing_box() {
 # -----------------------------------------------------------------------------
 get_apk_download_url() {
     _api="https://api.github.com/repos/$PROJECT_REPO/releases/latest"
-    fetch "$_api" | grep -o '"browser_download_url": *"[^"]*' | sed 's/.*"browser_download_url": *"//;s/"$//' | grep -E "$APK_NAME_PATTERN" | head -n1
+    _url="$(fetch "$_api" | grep -o '"browser_download_url": *"[^"]*' | sed 's/.*"browser_download_url": *"//;s/"$//' | grep -E "$APK_NAME_PATTERN" | head -n1)"
+    if [ -z "$_url" ]; then
+        warn "Could not find .apk via GitHub API; using fallback URL."
+        _url="$APK_FALLBACK_URL"
+    fi
+    printf '%s' "$_url"
 }
 
 install_apk_package() {
