@@ -1,0 +1,21 @@
+{
+	"luci-app-olcrtcwrt": {
+		"description": "Grant access to olcrtcwrt and WDTT management",
+		"read": {
+			"ubus": {
+				"olcrtcwrt": ["status", "nodes", "ping", "traffic", "logs", "nftables", "validate"]
+			},
+			"uci": ["olcrtcwrt"]
+		},
+		"write": {
+			"ubus": {
+				"olcrtcwrt": ["start", "stop", "restart", "download", "update_subscription"]
+			},
+			"uci": ["olcrtcwrt"],
+			"file": {
+				"/etc/olcrtcwrt/bin": ["write"],
+				"/etc/olcrtcwrt/bin/*": ["write"]
+			}
+		}
+	}
+}
