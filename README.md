@@ -14,8 +14,10 @@ OpenWrt LuCI приложение для управления клиентами
 Запустите от **root** на OpenWrt или на обычном Linux:
 
 ```bash
-sh <(wget -O - https://raw.githubusercontent.com/win64exe/OlcrtcWRT/refs/heads/dev/install.sh)
+sh -c "$(wget -O - https://raw.githubusercontent.com/win64exe/OlcrtcWRT/refs/heads/dev/install.sh)"
 ```
+
+> **Примечание:** форма `sh <(wget -O - …)` (process substitution) может нарушать работу интерактивного ввода в некоторых шеллах, поэтому мы рекомендуем именно `sh -c "$(wget -O - …)"`.
 
 `install.sh` скачает последний `luci-app-olcrtcwrt` .apk из GitHub Releases и предложит выбрать вариант sing-box:
 

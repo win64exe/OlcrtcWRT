@@ -25,6 +25,17 @@ info() { printf '\033[36;1m%s\033[0m\n' "$1"; }
 warn() { printf '\033[33;1m%s\033[0m\n' "$1"; }
 err()  { printf '\033[31;1m%s\033[0m\n' "$1" >&2; }
 
+# Read interactive input from the controlling terminal when available.
+# This keeps the menu working even when the script is sourced from a pipe
+# or process substitution (e.g. sh <(wget ...)).
+read_input() {
+    if [ -t 0 ] || [ ! -c /dev/tty ]; then
+        read -r "$@"
+    else
+        read -r "$@" < /dev/tty
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # Environment detection
 # -----------------------------------------------------------------------------
@@ -440,7 +451,7 @@ prompt_sing_box_choice() {
     echo "  2) sing-box-extended ($SING_BOX_EXTENDED)"
     echo "  3) Skip sing-box"
     printf 'Choice [1-3]: '
-    read -r _choice
+    read_input _choice
     case "$_choice" in
         1) printf 'official' ;;
         2) printf 'extended' ;;
@@ -494,7 +505,7 @@ main() {
     while true; do
         print_menu
         printf 'Choose an option [1-4]: '
-        read -r _choice
+        read_input _choice
         case "$_choice" in
             1) run_install ;;
             2)
@@ -510,7 +521,7 @@ main() {
             *) warn "Invalid option, please try again." ;;
         esac
         printf '\nPress Enter to continue...'
-        read -r _
+        read_input _
     done
 }
 
