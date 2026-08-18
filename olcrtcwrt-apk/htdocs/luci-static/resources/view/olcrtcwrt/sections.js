@@ -3,6 +3,7 @@
 'require uci';
 'require form';
 'require ui';
+'require view.olcrtcwrt.styles as styles';
 
 return view.extend({
 	load: function() {
@@ -12,116 +13,143 @@ return view.extend({
 	render: function() {
 		var m, s, o;
 
-		m = new form.Map('olcrtcwrt', _('Sections'),
-			_('Manage tunnel nodes. Each node can be an olcrtcwrt client/server, a WDTT tunnel, or a bypass rule.'));
+		styles.inject();
+		m = new form.Map('olcrtcwrt', _('Селекторы'),
+			_('Настройка узлов olcrtc и WDTT в стиле forkop. Перетаскивайте строки для изменения приоритета.'));
+		m.tabbed = true;
 
-		s = m.section(form.TypedSection, 'node', _('Nodes'));
-		s.addremove = true;
+		s = m.section(form.GridSection, 'node', _('Селекторы'),
+			_('Добавьте узел, выберите тип и откройте его параметры кнопкой «Изменить».'));
 		s.anonymous = false;
+		s.addremove = true;
+		s.sortable = true;
+		s.rowcolors = true;
+		s.nodescriptions = true;
+		s.tab('nodes', _('Селекторы'));
+		s.tab('connection', _('Подключение'), _('Параметры подключения и локального прокси.'));
+		s.tab('runtime', _('Параметры'), _('Параметры WDTT, обхода и дополнительные аргументы.'));
+		s.modaltitle = function(section_id) {
+			var label = uci.get('olcrtcwrt', section_id, 'label');
+			return section_id ? _('Селектор: %s').format(label || section_id) : _('Добавить селектор');
+		};
+		s.sectiontitle = function(section_id) {
+			return uci.get('olcrtcwrt', section_id, 'label') || section_id;
+		};
+		s.renderRowActions = function(section_id) {
+			return form.TableSection.prototype.renderRowActions.call(this, section_id, _('Изменить'));
+		};
 
-		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o = s.option(form.Value, 'label', _('Название'));
+		o.placeholder = _('Например: основной olcrtc');
+		o.rmempty = false;
 
-		o = s.option(form.ListValue, 'type', _('Node type'));
-		o.value('olcrtcwrt', 'olcrtcwrt');
+		o = s.option(form.Flag, 'enabled', _('Включен'));
+
+		o = s.option(form.ListValue, 'type', _('Тип'));
+		o.value('olcrtcwrt', 'olcrtc');
 		o.value('wdtt', 'WDTT');
-		o.value('bypass', _('Bypass'));
+		o.value('bypass', _('Обход'));
 
-		o = s.option(form.ListValue, 'mode', _('Mode'));
-		o.value('client', _('Client'));
-		o.value('server', _('Server'));
+		o = s.taboption('connection', form.ListValue, 'mode', _('Режим'));
+		o.value('client', _('Клиент'));
+		o.value('server', _('Сервер'));
 		o.depends('type', 'olcrtcwrt');
 
-		o = s.option(form.Value, 'connection_uri', _('Connection URI'));
+		o = s.taboption('connection', form.Value, 'connection_uri', _('URI подключения'));
 		o.placeholder = 'olcrtc://provider?transport<opts>@room#key';
 		o.depends({ type: 'olcrtcwrt', mode: 'client' });
 		o.validate = function(section_id, value) {
-			if (!value) return true;
-			if (!/^olcrtc:\/\/[^?@#]+(\?[^@#]+)?@[^#]+#.+$/.test(value)) {
-				return _('Invalid URI format. Expected olcrtc://provider?transport<opts>@room#key');
-			}
+			if (!value)
+				return true;
+			if (!/^olcrtc:\/\/[^?@#]+(\?[^@#]+)?@[^#]+#.+$/.test(value))
+				return _('Неверный формат. Ожидается olcrtc://provider?transport<opts>@room#key');
 			return true;
 		};
 
-		o = s.option(form.Value, 'server_uri', _('Server URI / Room UUID'));
+		o = s.taboption('connection', form.Value, 'server_uri', _('URI сервера / Room UUID'));
 		o.depends({ type: 'olcrtcwrt', mode: 'client', connection_uri: '' });
 
-		o = s.option(form.Value, 'shared_key', _('Shared key'));
+		o = s.taboption('connection', form.Value, 'shared_key', _('Общий ключ'));
 		o.password = true;
 		o.depends({ type: 'olcrtcwrt', mode: 'client', connection_uri: '' });
 
-		o = s.option(form.ListValue, 'provider', _('Provider'));
+		o = s.taboption('connection', form.ListValue, 'provider', _('Провайдер'));
 		o.value('jitsi', 'Jitsi');
 		o.value('telemost', 'Yandex Telemost');
 		o.value('wbstream', 'WB Stream');
 		o.depends({ type: 'olcrtcwrt', mode: 'client', connection_uri: '' });
 
-		o = s.option(form.ListValue, 'transport', _('Transport'));
+		o = s.taboption('connection', form.ListValue, 'transport', _('Транспорт'));
 		o.value('datachannel', 'datachannel');
 		o.value('vp8channel', 'vp8channel');
 		o.value('seichannel', 'seichannel');
 		o.value('videochannel', 'videochannel');
 		o.depends({ type: 'olcrtcwrt', mode: 'client', connection_uri: '' });
 
-		o = s.option(form.Value, 'local_socks_host', _('Local SOCKS host'));
+		o = s.taboption('connection', form.Value, 'local_socks_host', _('Локальный SOCKS host'));
 		o.depends({ type: 'olcrtcwrt', mode: 'client' });
 
-		o = s.option(form.Value, 'local_socks_port', _('Local SOCKS port'));
+		o = s.taboption('connection', form.Value, 'local_socks_port', _('Локальный SOCKS порт'));
 		o.datatype = 'port';
 		o.depends({ type: 'olcrtcwrt', mode: 'client' });
 
-		o = s.option(form.Value, 'vps_host', _('VPS host'));
+		o = s.taboption('runtime', form.Value, 'vps_host', _('VPS host'));
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'vps_port', _('VPS port'));
+		o = s.taboption('runtime', form.Value, 'vps_port', _('VPS порт'));
 		o.datatype = 'port';
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'vk_hash', _('VK hash'));
+		o = s.taboption('runtime', form.Value, 'vk_hash', _('VK hash'));
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'password', _('Password'));
+		o = s.taboption('runtime', form.Value, 'password', _('Пароль'));
 		o.password = true;
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'threads', _('Threads'));
+		o = s.taboption('runtime', form.Value, 'threads', _('Потоки'));
 		o.datatype = 'uinteger';
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'local_udp_port', _('Local UDP port'));
+		o = s.taboption('runtime', form.Value, 'local_udp_port', _('Локальный UDP порт'));
 		o.datatype = 'port';
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'wireguard_config', _('WireGuard config path'));
+		o = s.taboption('runtime', form.Value, 'wireguard_config', _('Путь к WireGuard конфигурации'));
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'wireguard_iface', _('WireGuard interface name'));
+		o = s.taboption('runtime', form.Value, 'wireguard_iface', _('Имя WireGuard интерфейса'));
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Flag, 'auto_captcha', _('Auto captcha'));
+		o = s.taboption('runtime', form.Flag, 'auto_captcha', _('Автоматическая captcha'));
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.DynamicList, 'bypass_ips', _('Bypass IPv4 subnets/IPs'));
+		o = s.taboption('runtime', form.DynamicList, 'bypass_ips', _('IPv4 сети/IP для обхода'));
 		o.datatype = 'ip4addr';
 		o.depends('type', 'bypass');
 
-		o = s.option(form.DynamicList, 'bypass_ips6', _('Bypass IPv6 subnets/IPs'));
+		o = s.taboption('runtime', form.DynamicList, 'bypass_ips6', _('IPv6 сети/IP для обхода'));
 		o.datatype = 'ip6addr';
 		o.depends('type', 'bypass');
 
-		o = s.option(form.Value, 'dialer_proxy', _('Dialer proxy (node name)'));
-		o.placeholder = _('Name of another node to use as SOCKS upstream');
+		o = s.taboption('runtime', form.Value, 'dialer_proxy', _('Прокси для подключения'));
+		o.placeholder = _('Имя другого узла для SOCKS upstream');
 		o.depends({ type: 'olcrtcwrt', mode: 'client' });
 		o.depends('type', 'wdtt');
 
-		o = s.option(form.Value, 'extra_args', _('Extra arguments'));
+		o = s.taboption('runtime', form.Value, 'extra_args', _('Дополнительные аргументы'));
 
-		s = m.section(form.NamedSection, 'main', 'subscription', _('Subscription'));
-		o = s.option(form.Flag, 'enabled', _('Enable subscription'));
-		o = s.option(form.Value, 'url', _('Subscription URL'));
-		o = s.option(form.Flag, 'auto_update', _('Auto update'));
-		o = s.option(form.Value, 'update_interval', _('Update interval (hours)'));
+		s = m.section(form.NamedSection, 'main', 'subscription', _('Подписка'));
+		s.tab('subscription', _('Подписка'));
+		o = s.option(form.Flag, 'enabled', _('Включить подписку'));
+		o = s.option(form.Value, 'url', _('URL подписки'));
+		o = s.option(form.Flag, 'auto_update', _('Автоматическое обновление'));
+		o = s.option(form.Value, 'update_interval', _('Интервал обновления (часы)'));
 		o.datatype = 'uinteger';
 
-		return m.render();
+		return m.render().then(function(node) {
+			node.classList.add('olcrtcwrt-forkop-selectors');
+			return node;
+		});
 	}
 });
