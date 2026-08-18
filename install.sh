@@ -369,7 +369,11 @@ uninstall_sing_box() {
 # -----------------------------------------------------------------------------
 get_apk_download_url() {
     _api="https://api.github.com/repos/$PROJECT_REPO/releases/latest"
-    _url="$(fetch "$_api" | grep -o '"browser_download_url": *"[^"]*' | sed 's/.*"browser_download_url": *"//;s/"$//' | grep -E "$APK_NAME_PATTERN" | head -n1)"
+    _assets="$(fetch "$_api" | grep -o '"browser_download_url": *"[^"]*' | sed 's/.*"browser_download_url": *"//;s/"$//')"
+    _url="$(printf '%s\n' "$_assets" | grep -F "/$APK_NAME" | head -n1)"
+    if [ -z "$_url" ]; then
+        _url="$(printf '%s\n' "$_assets" | grep -E "$APK_NAME_PATTERN" | head -n1)"
+    fi
     if [ -z "$_url" ]; then
         warn "Could not find .apk via GitHub API; using fallback URL." >&2
         _url="$APK_FALLBACK_URL"
