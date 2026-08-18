@@ -1,6 +1,6 @@
 {
 	"admin/services/olcrtcwrt": {
-		"title": "olcrtcwrt / WDTT",
+		"title": "Topkop",
 		"action": {
 			"type": "firstchild"
 		},

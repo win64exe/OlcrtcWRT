@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-olcrtcwrt
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_MAINTAINER:=OlcrtcWRT
 PKG_LICENSE:=WTFPL
@@ -64,7 +64,7 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(CP) ./root/. $(1)/
-	$(CP) ./htdocs/. $(1)/
+	$(CP) ./htdocs/. $(1)/www/
 	$(INSTALL_DIR) $(1)/etc/olcrtcwrt/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bin/olcrtc-linux-arm64 $(1)/etc/olcrtcwrt/bin/olcrtc-linux-arm64
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bin/client-arm64 $(1)/etc/olcrtcwrt/bin/client-arm64
