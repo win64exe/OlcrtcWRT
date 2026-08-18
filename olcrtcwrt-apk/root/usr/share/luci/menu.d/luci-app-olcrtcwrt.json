@@ -10,7 +10,7 @@
 		"order": 60
 	},
 	"admin/services/olcrtcwrt/sections": {
-		"title": "Sections",
+		"title": "Селекторы",
 		"action": {
 			"type": "view",
 			"path": "olcrtcwrt/sections"
@@ -18,7 +18,7 @@
 		"order": 1
 	},
 	"admin/services/olcrtcwrt/settings": {
-		"title": "Settings",
+		"title": "Настройки",
 		"action": {
 			"type": "view",
 			"path": "olcrtcwrt/settings"
@@ -26,7 +26,7 @@
 		"order": 2
 	},
 	"admin/services/olcrtcwrt/diagnostics": {
-		"title": "Diagnostics",
+		"title": "Диагностика",
 		"action": {
 			"type": "view",
 			"path": "olcrtcwrt/diagnostics"
@@ -34,11 +34,27 @@
 		"order": 3
 	},
 	"admin/services/olcrtcwrt/dashboard": {
-		"title": "Dashboard",
+		"title": "Панель",
 		"action": {
 			"type": "view",
 			"path": "olcrtcwrt/dashboard"
 		},
 		"order": 4
+	},
+	"admin/services/olcrtcwrt/monitoring": {
+		"title": "Мониторинг",
+		"action": {
+			"type": "view",
+			"path": "olcrtcwrt/monitoring"
+		},
+		"order": 5
+	},
+	"admin/services/olcrtcwrt/components": {
+		"title": "Компоненты",
+		"action": {
+			"type": "view",
+			"path": "olcrtcwrt/components"
+		},
+		"order": 6
 	}
 }

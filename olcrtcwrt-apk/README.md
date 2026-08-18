@@ -5,17 +5,20 @@ LuCI application for managing **olcrtcwrt** (TCP-over-WebRTC tunnel) and **WDTT*
 
 ## Features
 
-- 4 tabs in LuCI:
-  - **Dashboard** — real-time status, per-section ping and traffic counters
-  - **Sections** — manage multiple olcrtcwrt and WDTT sections
-  - **Settings** — global options, autostart, proxy and binary download
-  - **Diagnostics** — service status, recent logs, nftables ruleset validation
+- Интерфейс LuCI в стиле forkop с отдельными вкладками:
+  - **Панель** — сводка состояния узлов, ping и трафик
+  - **Селекторы** — настройка нескольких узлов olcrtc и WDTT
+  - **Настройки** — глобальные параметры, автозапуск и маршрутизация
+  - **Диагностика** — статусы служб, логи и проверка nftables
+  - **Мониторинг** — периодическое обновление состояния и счётчиков
+  - **Компоненты** — проверка обновлений и установка olcrtc, WDTT и выбранного sing-box
+- APK содержит только интерфейс LuCI и backend; бинарные файлы в него не входят и загружаются отдельно под архитектуру роутера
 - Modern **JavaScript** LuCI views (no Lua controller)
 - **ucode** `rpcd` backend (`/usr/share/rpcd/ucode/olcrtcwrt.uc`)
 - Menu defined in JSON (`/usr/share/luci/menu.d/luci-app-olcrtcwrt.json`)
 - Client mode for both protocols
-- Automatic binary download for the target architecture
-- Manual binary upload (olcrtcwrt and WDTT/proxy-turn-vk-android) via LuCI
+- Установка компонентов из GitHub-релизов для архитектуры роутера
+- Выбор между официальным и extended-вариантом sing-box
 - `procd`-based init script with autostart support
 - `rpcd`/`ubus` backend for the modern LuCI JS frontend
 
@@ -45,7 +48,9 @@ olcrtcwrt-apk/
     ├── sections.js
     ├── settings.js
     ├── diagnostics.js
-    └── dashboard.js
+    ├── dashboard.js
+    ├── monitoring.js
+    └── components.js
 ```
 
 ## Build
@@ -64,22 +69,25 @@ The resulting `.apk` will be in `bin/packages/`.
 ## Install on router
 
 ```bash
-apk add --allow-untrusted luci-app-olcrtcwrt_1.0.0-5_all.apk
+apk add --allow-untrusted luci-app-olcrtcwrt_1.0.0-7_all.apk
 ```
 
 After installation, open LuCI at `Services -> Topkop`.
 
-## First run
+## Первый запуск
 
-1. Go to **Settings** and click **Download binaries**, or upload olcrtcwrt / WDTT binaries manually in the **Manual binary install** section.
-2. Configure at least one section in **Sections**.
-3. Enable the desired section and global autostart in **Settings**.
-4. Use the **Dashboard** to start/stop services and monitor ping/traffic.
+1. Откройте **Компоненты**, нажмите «Проверить обновления» и установите olcrtc, WDTT и нужный вариант sing-box.
+2. В разделе **Селекторы** настройте хотя бы один узел и его параметры подключения.
+3. Включите узел и глобальный автозапуск в разделе **Настройки**.
+4. Используйте **Панель** или **Мониторинг** для контроля состояния, ping и трафика.
+
+Если бинарник olcrtc отсутствует в релизе проекта, вкладка «Компоненты» сообщит об этом явно. В этом случае его можно загрузить вручную из раздела управления компонентами после публикации asset для нужной архитектуры.
 
 ## Configuration files
 
 - `/etc/config/olcrtcwrt` — UCI configuration
-- `/etc/olcrtcwrt/bin/` — downloaded binaries
+- `/etc/olcrtcwrt/bin/` — загруженные компоненты (olcrtc, WDTT)
+- `/usr/bin/sing-box` — выбранный компонент sing-box
 - `/var/log/olcrtcwrt/` — service logs
 - `/var/run/olcrtcwrt/` — PID files
 - `/usr/share/rpcd/ucode/olcrtcwrt.uc` — ucode RPC backend
