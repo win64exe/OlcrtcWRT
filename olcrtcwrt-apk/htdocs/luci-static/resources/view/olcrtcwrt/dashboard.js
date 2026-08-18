@@ -2,9 +2,7 @@
 'require view';
 'require rpc';
 'require ui';
-'require form';
-'require dom';
-'require request';
+'require view.olcrtcwrt.styles as styles';
 
 var callStatus = rpc.declare({
 	object: 'olcrtcwrt',
@@ -42,6 +40,18 @@ var callNodeAction = {
 	})
 };
 
+function nodeType(name) {
+	return name.indexOf('wdtt_') === 0 ? 'WDTT' : 'olcrtc';
+}
+
+function nodeLabel(name) {
+	return name.replace(/^olcrtcwrt_/, 'olcrtc: ').replace(/^wdtt_/, 'WDTT: ');
+}
+
+function val(value, fallback) {
+	return value === undefined || value === null || value === '' ? fallback : value;
+}
+
 return view.extend({
 	load: function() {
 		return Promise.all([
@@ -49,8 +59,8 @@ return view.extend({
 			callPing(),
 			callTraffic()
 		]).catch(function(err) {
-			ui.addNotification(null, E('p', _('Failed to load dashboard data: %s').format(err.message)));
-			return [{}, {}, {}];
+			ui.addNotification(null, E('p', _('Не удалось загрузить данные панели: %s').format(err.message)));
+			return [{ nodes: {} }, {}, {}];
 		});
 	},
 
@@ -87,10 +97,10 @@ return view.extend({
 				var trafficEl = document.getElementById('node-traffic-' + nodeName);
 
 				if (statusEl) {
-					statusEl.textContent = state;
-					statusEl.className = 'td cbi-value-' + (state === 'running' ? 'success' : 'warning');
+					statusEl.textContent = state === 'running' ? _('Работает') : _('Остановлен');
+					statusEl.style.color = state === 'running' ? 'var(--success-color-medium)' : 'var(--warn-color-medium)';
 				}
-				if (pingEl) pingEl.textContent = nodePing + ' ms';
+				if (pingEl) pingEl.textContent = val(nodePing, '-') + (nodePing ? ' ms' : '');
 				if (trafficEl) trafficEl.textContent = rx + ' / ' + tx;
 			});
 		}).catch(function(err) {
@@ -100,88 +110,91 @@ return view.extend({
 
 	createNodeRow: function(nodeName) {
 		var self = this;
-		var row = E('div', { 'class': 'tr', 'id': 'node-row-' + nodeName }, [
-			E('div', { 'class': 'td' }, nodeName),
-			E('div', { 'id': 'node-status-' + nodeName, 'class': 'td cbi-value-warning' }, _('unknown')),
-			E('div', { 'id': 'node-ping-' + nodeName, 'class': 'td' }, '-'),
-			E('div', { 'id': 'node-traffic-' + nodeName, 'class': 'td' }, '0 / 0'),
-			E('div', { 'class': 'td cbi-section' }, [
+		return E('tr', { 'id': 'node-row-' + nodeName }, [
+			E('td', { 'data-label': _('Узел') }, E('strong', {}, nodeLabel(nodeName))),
+			E('td', { 'data-label': _('Тип') }, nodeType(nodeName)),
+			E('td', { 'id': 'node-status-' + nodeName, 'class': 'cbi-value-warning', 'data-label': _('Состояние') }, _('Неизвестно')),
+			E('td', { 'id': 'node-ping-' + nodeName, 'data-label': _('Ping') }, '-'),
+			E('td', { 'id': 'node-traffic-' + nodeName, 'data-label': _('Трафик RX / TX') }, '0 / 0'),
+			E('td', { 'data-label': _('Действия') }, [
 				E('button', {
 					'class': 'btn cbi-button cbi-button-apply',
 					'click': ui.createHandlerFn(self, 'handleStartStop', nodeName, 'start')
-				}, _('Start')),
+				}, _('Запустить')),
 				' ',
 				E('button', {
 					'class': 'btn cbi-button cbi-button-reset',
 					'click': ui.createHandlerFn(self, 'handleStartStop', nodeName, 'stop')
-				}, _('Stop')),
+				}, _('Остановить')),
 				' ',
 				E('button', {
 					'class': 'btn cbi-button cbi-button-neutral',
 					'click': ui.createHandlerFn(self, 'handleStartStop', nodeName, 'restart')
-				}, _('Restart'))
+				}, _('Перезапустить'))
 			])
 		]);
-		return row;
 	},
 
 	render: function(data) {
+		styles.inject();
 		var self = this;
 		var status = data[0] || {};
 		var nodes = status.nodes || {};
 
-		this.pollHandle = L.Request.poll.add(L.bind(this.pollStatus, this), 5000);
+		this.pollFn = L.bind(this.pollStatus, this);
+		L.Request.poll.add(this.pollFn, 5000);
 
-		var tbody = E('div', { 'id': 'olcrtcwrt-nodes-body' });
+		var tbody = E('tbody', { 'id': 'olcrtcwrt-nodes-body' });
 
 		Object.keys(nodes).forEach(function(nodeName) {
 			tbody.appendChild(self.createNodeRow(nodeName));
 		});
 
-		var node = E('div', { 'class': 'cbi-section' }, [
-			E('h2', {}, _('Dashboard')),
-			E('p', {}, _('Real-time status, ping and traffic counters for olcrtcwrt and WDTT nodes.')),
-			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'table' }, [
-					E('div', { 'class': 'tr table-titles' }, [
-						E('div', { 'class': 'th' }, _('Node')),
-						E('div', { 'class': 'th' }, _('Status')),
-						E('div', { 'class': 'th' }, _('Ping')),
-						E('div', { 'class': 'th' }, _('Traffic (RX / TX)')),
-						E('div', { 'class': 'th' }, _('Actions'))
-					]),
+		return E('div', { 'class': 'cbi-map olcrtcwrt-forkop-page fkp_monitoring-page' }, [
+			E('h2', {}, _('Панель')),
+			E('p', {}, _('Состояние, ping и трафик узлов olcrtc и WDTT в реальном времени.')),
+			E('div', { 'class': 'fkp_monitoring-page__controls' }, [
+				E('div', { 'class': 'fkp_monitoring-page__actions' }, [
+					E('button', {
+						'class': 'btn cbi-button cbi-button-apply',
+						'click': ui.createHandlerFn(this, 'handleRefresh')
+					}, _('Обновить'))
+				])
+			]),
+			E('div', { 'class': 'fkp_monitoring-page__table-wrap' }, [
+				E('table', { 'class': 'fkp_monitoring-page__table' }, [
+					E('thead', {}, [E('tr', {}, [
+						E('th', {}, _('Узел')),
+						E('th', {}, _('Тип')),
+						E('th', {}, _('Состояние')),
+						E('th', {}, _('Ping')),
+						E('th', {}, _('Трафик RX / TX')),
+						E('th', {}, _('Действия'))
+					])]),
 					tbody
 				])
 			]),
-			E('div', { 'class': 'cbi-section' }, [
-				E('button', {
-					'class': 'btn cbi-button cbi-button-apply',
-					'click': ui.createHandlerFn(this, 'handleRefresh')
-				}, _('Refresh'))
-			])
+			E('div', { 'class': 'cbi-section-descr' }, _('Обновление выполняется каждые 5 секунд.'))
 		]);
-
-		return node;
 	},
 
 	handleStartStop: function(nodeName, action, ev) {
 		var type = nodeName.indexOf('wdtt') === 0 ? 'wdtt' : 'olcrtcwrt';
 		var section = nodeName.replace(/^(olcrtcwrt|wdtt)_/, '');
 		return callNodeAction[action]({ type: type, section: section }).then(function() {
-			ui.addNotification(null, E('p', _('%s %sed').format(nodeName, action)));
+			ui.addNotification(null, E('p', _('%s: %s выполнено').format(nodeLabel(nodeName), action)));
 		}).catch(function(err) {
-			ui.addNotification(null, E('p', _('Failed to %s %s: %s').format(action, nodeName, err.message)));
+			ui.addNotification(null, E('p', _('Не удалось выполнить %s для %s: %s').format(action, nodeName, err.message)));
 		});
 	},
 
 	handleRefresh: function() {
-		window.location.reload();
+		return this.pollStatus();
 	},
 
 	remove: function() {
-		if (this.pollHandle) {
-			L.Request.poll.remove(this.pollHandle);
-		}
+		if (this.pollFn)
+			L.Request.poll.remove(this.pollFn);
 		return this.super('remove', arguments);
 	}
 });

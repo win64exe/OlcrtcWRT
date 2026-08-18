@@ -43,8 +43,8 @@ return view.extend({
 	render: function(data) {
 		styles.inject();
 		var status = data[0] || {};
-		var olLogs = data[1] || '';
-		var wdLogs = data[2] || '';
+		var olLogs = (data[1] && data[1].log) || '';
+		var wdLogs = (data[2] && data[2].log) || '';
 		var nftables = data[3] || {};
 		var validation = data[4] || {};
 		var nodes = status.nodes || {};

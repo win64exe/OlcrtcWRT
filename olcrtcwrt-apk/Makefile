@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-olcrtcwrt
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 
 PKG_MAINTAINER:=OlcrtcWRT
 PKG_LICENSE:=WTFPL
@@ -23,7 +23,7 @@ define Package/$(PKG_NAME)
   SUBMENU:=3. Applications
   TITLE:=olcrtcwrt and WDTT client management
   URL:=https://github.com/win64exe/OlcrtcWRT
-  DEPENDS:=+luci-base +curl +ca-bundle +ca-certificates +dnsmasq +wireguard-tools +jq +rpcd-mod-ucode +rpcd-mod-file +ucode +ucode-mod-fs +ucode-mod-uci
+  DEPENDS:=+luci-base +curl +ca-bundle +ca-certificates +dnsmasq +wireguard-tools +jq +iputils-ping +rpcd-mod-ucode +rpcd-mod-file +ucode +ucode-mod-fs +ucode-mod-uci
   PKGARCH:=all
 endef
 

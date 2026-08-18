@@ -127,7 +127,8 @@ return view.extend({
 	render: function(data) {
 		styles.inject();
 		this.data = data;
-		this.pollHandle = L.Request.poll.add(L.bind(this.poll, this), 5000);
+		this.pollFn = L.bind(this.poll, this);
+		L.Request.poll.add(this.pollFn, 5000);
 		var self = this;
 		var controls = E('div', { 'class': 'fkp_monitoring-page__controls' }, [
 			E('div', { 'class': 'fkp_monitoring-page__tabs' }, [
@@ -193,15 +194,14 @@ return view.extend({
 
 	refresh: function() {
 		return this.load().then(function(data) {
-			var root = document.querySelector('.fkp_monitoring-page');
-			if (root)
-				root.parentNode.replaceChild(this.render(data), root);
+			this.data = data;
+			this.updateBody();
 		}.bind(this));
 	},
 
 	remove: function() {
-		if (this.pollHandle)
-			L.Request.poll.remove(this.pollHandle);
+		if (this.pollFn)
+			L.Request.poll.remove(this.pollFn);
 		return this.super('remove', arguments);
 	}
 });

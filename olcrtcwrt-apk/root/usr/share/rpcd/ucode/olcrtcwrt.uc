@@ -6,7 +6,6 @@ import { cursor } from 'uci';
 
 const CONFIG = 'olcrtcwrt';
 const PID_DIR = '/var/run/olcrtcwrt';
-const JSON = require('json');
 
 function exec(cmd) {
 	let f = popen(cmd);
@@ -24,7 +23,7 @@ function exec_json(cmd) {
 	if (!str)
 		return {};
 	try {
-		return JSON.parse(str) || {};
+		return json(str) || {};
 	} catch (e) {
 		return {};
 	}
@@ -135,7 +134,7 @@ return {
 					out = exec('/etc/olcrtcwrt/olcrtcwrt-client.sh logs ' + lines);
 				else if (type == 'wdtt')
 					out = exec('/etc/olcrtcwrt/wdtt-client.sh logs ' + lines);
-				return out;
+				return { log: out };
 			}
 		},
 
