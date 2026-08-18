@@ -38,6 +38,7 @@ sh install.sh install
 # Установить или обновить только OlcrtcWRT APK
 sh install.sh apk
 # Также доступны команды install-apk и package
+# При конфликте старой локальной APK-записи установщик удалит только старый пакет и повторит установку.
 
 # Установить/обновить только sing-box
 sh install.sh sing-box

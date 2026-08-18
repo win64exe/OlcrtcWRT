@@ -413,7 +413,11 @@ install_apk_package() {
 
     if [ "$_pkg_mgr" = "apk" ]; then
         info "Installing with apk..."
-        apk add --allow-untrusted "$_apk_file"
+        if ! apk add --allow-untrusted --force-overwrite "$_apk_file"; then
+            warn "The existing OlcrtcWRT package has a pinned local APK constraint. Retrying after removing the old package..."
+            apk del luci-app-olcrtcwrt >/dev/null 2>&1 || true
+            apk add --allow-untrusted --force-overwrite "$_apk_file"
+        fi
     else
         info "Installing with opkg..."
         opkg install "$_apk_file"
