@@ -2,6 +2,7 @@
 'require view';
 'require rpc';
 'require ui';
+'require view.olcrtcwrt.styles as styles';
 
 var callComponentsStatus = rpc.declare({
 	object: 'olcrtcwrt_components',
@@ -19,26 +20,17 @@ function text(value) {
 	return value || _('не установлено');
 }
 
-function statusText(item) {
+function cardState(item) {
 	if (!item || !item.installed)
 		return _('Не установлено');
-	if (item.update_available)
-		return _('Доступно обновление');
-	return _('Установлено');
+	return item.update_available ? _('Доступно обновление') : _('Установлено');
 }
 
-function statusClass(item) {
-	if (!item || !item.installed)
-		return 'cbi-value-warning';
-	return item.update_available ? 'cbi-value-warning' : 'cbi-value-success';
-}
-
-function latestText(item) {
-	if (!item)
-		return _('неизвестно');
-	if (item.extended_latest)
-		return _('официальный: %s; extended: %s').format(text(item.latest), text(item.extended_latest));
-	return text(item.latest);
+function createInfoRow(label, value) {
+	return E('div', { 'class': 'fkp_updates-page__component__info-row' }, [
+		E('span', { 'class': 'fkp_updates-page__component__info-label' }, label),
+		E('span', { 'class': 'fkp_updates-page__component__info-value' }, value)
+	]);
 }
 
 return view.extend({
@@ -49,64 +41,63 @@ return view.extend({
 		});
 	},
 
-	renderComponentRow: function(key, item, title, installVariant) {
-		var self = this;
-		var action = installVariant ? 'sing-box' : key;
-		var button = E('button', {
-			'class': 'btn cbi-button cbi-button-apply',
-			'click': ui.createHandlerFn(self, 'installComponent', action, installVariant || 'official')
-		}, item && item.installed ? _('Обновить') : _('Установить'));
+	renderAction: function(component, variant, label, primary) {
+		return E('button', {
+			'class': 'btn cbi-button ' + (primary ? 'cbi-button-save' : ''),
+			'click': ui.createHandlerFn(this, 'installComponent', component, variant)
+		}, label);
+	},
 
-		return E('div', { 'class': 'tr' }, [
-			E('div', { 'class': 'td' }, title),
-			E('div', { 'class': 'td' }, text(item && item.version)),
-			E('div', { 'class': 'td' }, latestText(item)),
-			E('div', { 'class': 'td ' + statusClass(item) }, statusText(item)),
-			E('div', { 'class': 'td' }, button)
+	renderCard: function(component, title, item, variants) {
+		var installed = item && item.installed;
+		var actions = [];
+		if (component !== 'sing-box') {
+			actions.push(this.renderAction(component, 'official', installed ? _('Обновить') : _('Установить'), true));
+		} else {
+			actions.push(this.renderAction('sing-box', 'official', _('Официальный'), true));
+			actions.push(this.renderAction('sing-box', 'extended', _('Extended'), false));
+		}
+
+		var details = [
+			createInfoRow(_('Версия'), text(item && item.version)),
+			createInfoRow(_('Состояние'), cardState(item))
+		];
+		if (item && item.latest)
+			details.push(createInfoRow(_('Последняя версия'), item.latest));
+		if (item && item.extended_latest)
+			details.push(createInfoRow(_('Extended версия'), item.extended_latest));
+
+		return E('div', { 'class': 'fkp_updates-page__component' }, [
+			E('div', { 'class': 'fkp_updates-page__component__header' }, [
+				E('b', { 'class': 'fkp_updates-page__component__title' }, title),
+				E('span', { 'class': 'fkp_updates-page__component__header-version' },
+					item && item.path ? item.path : '')
+			]),
+			E('div', { 'class': 'fkp_updates-page__component__details' }, details),
+			E('div', { 'class': 'fkp_updates-page__component__actions fkp_updates-page__component__actions--with-details' }, [
+				E('div', { 'class': 'fkp_updates-page__component__actions-main' }, actions)
+			])
 		]);
 	},
 
 	render: function(data) {
-		var self = this;
+		styles.inject();
 		var components = data.components || {};
-		var variant = E('select', { 'id': 'olcrtcwrt-singbox-variant', 'class': 'cbi-input-select' }, [
-			E('option', { 'value': 'official' }, _('Официальный sing-box')),
-			E('option', { 'value': 'extended' }, _('sing-box extended'))
-		]);
-		var singbox = components.sing_box || {};
+		var columnA = [
+			this.renderCard('olcrtc', 'olcrtc', components.olcrtc),
+			this.renderCard('wdtt', 'WDTT', components.wdtt)
+		];
+		var columnB = [
+			this.renderCard('sing-box', 'sing-box', components.sing_box)
+		];
 
-		var table = E('div', { 'class': 'table' }, [
-			E('div', { 'class': 'tr table-titles' }, [
-				E('div', { 'class': 'th' }, _('Компонент')),
-				E('div', { 'class': 'th' }, _('Установленная версия')),
-				E('div', { 'class': 'th' }, _('Последняя версия')),
-				E('div', { 'class': 'th' }, _('Состояние')),
-				E('div', { 'class': 'th' }, _('Действие'))
-			]),
-			this.renderComponentRow('olcrtc', components.olcrtc, 'olcrtc'),
-			this.renderComponentRow('wdtt', components.wdtt, 'WDTT'),
-			E('div', { 'class': 'tr' }, [
-				E('div', { 'class': 'td' }, 'sing-box'),
-				E('div', { 'class': 'td' }, text(singbox.version)),
-				E('div', { 'class': 'td' }, latestText(singbox)),
-				E('div', { 'class': 'td ' + statusClass(singbox) }, statusText(singbox)),
-				E('div', { 'class': 'td' }, [
-					variant,
-					' ',
-					E('button', {
-						'class': 'btn cbi-button cbi-button-apply',
-						'click': ui.createHandlerFn(this, 'installSelectedSingBox')
-					}, singbox.installed ? _('Обновить') : _('Установить'))
-				])
-			])
-		]);
-
-		return E('div', { 'class': 'cbi-map' }, [
+		return E('div', { 'class': 'cbi-map olcrtcwrt-forkop-page fkp_updates-page' }, [
 			E('h2', {}, _('Компоненты')),
-			E('p', {}, _('Управление компонентами OlcrtcWRT. APK содержит только интерфейс; бинарные файлы загружаются отдельно под архитектуру роутера.')),
+			E('p', {}, _('Установка компонентов в стиле forkop. APK содержит только LuCI-интерфейс, бинарники загружаются отдельно.')),
 			E('p', {}, _('Архитектура: %s').format(data.architecture || _('не определена'))),
-			E('div', { 'class': 'cbi-section' }, [
-				E('div', { 'class': 'cbi-section-node' }, table)
+			E('div', { 'class': 'fkp_updates-page__components' }, [
+				E('div', { 'class': 'fkp_updates-page__components-column' }, columnA),
+				E('div', { 'class': 'fkp_updates-page__components-column' }, columnB)
 			]),
 			E('div', { 'class': 'cbi-section' }, [
 				E('button', {
@@ -115,11 +106,6 @@ return view.extend({
 				}, _('Проверить обновления'))
 			])
 		]);
-	},
-
-	installSelectedSingBox: function() {
-		var select = document.getElementById('olcrtcwrt-singbox-variant');
-		return this.installComponent('sing-box', select ? select.value : 'official');
 	},
 
 	installComponent: function(component, variant) {
@@ -141,7 +127,7 @@ return view.extend({
 
 	refresh: function() {
 		return this.load().then(function(data) {
-			var content = document.querySelector('.cbi-map');
+			var content = document.querySelector('.fkp_updates-page');
 			if (content)
 				content.parentNode.replaceChild(this.render(data), content);
 		}.bind(this));

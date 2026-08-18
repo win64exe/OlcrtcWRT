@@ -5,6 +5,7 @@
 'require ui';
 'require rpc';
 'require dom';
+'require view.olcrtcwrt.styles as styles';
 
 var callDownload = rpc.declare({
 	object: 'olcrtcwrt',
@@ -33,12 +34,15 @@ return view.extend({
 	},
 
 	render: function() {
+		styles.inject();
 		var m, s, o;
 
-		m = new form.Map('olcrtcwrt', _('Settings'),
-			_('Global settings and binary management.'));
+		m = new form.Map('olcrtcwrt', _('Настройки'),
+			_('Настройки OlcrtcWRT в стиле вкладок forkop.'));
+		m.tabbed = true;
 
-		s = m.section(form.NamedSection, 'global', 'global', _('Global'));
+		s = m.section(form.NamedSection, 'global', 'global', _('Общие'));
+		s.tab('global', _('Общие'));
 
 		o = s.option(form.Flag, 'enabled', _('Enable olcrtcwrt-apk'));
 		o = s.option(form.Flag, 'autostart', _('Autostart on boot'));
@@ -52,7 +56,8 @@ return view.extend({
 		o = s.option(form.Value, 'ping_interval', _('Ping interval (seconds)'));
 		o.datatype = 'uinteger';
 
-		s = m.section(form.NamedSection, 'proxy', 'proxy', _('Proxy & Routing'));
+		s = m.section(form.NamedSection, 'proxy', 'proxy', _('Прокси и маршрутизация'));
+		s.tab('proxy', _('Прокси и маршрутизация'));
 
 		o = s.option(form.Flag, 'enabled', _('Enable local proxy'));
 		o = s.option(form.ListValue, 'routing_core', _('Routing core'));
@@ -97,7 +102,8 @@ return view.extend({
 		o.depends('routing_core', 'sing-box');
 		o.description = _('Auto-populated from node server_uri/vps_host. Required to prevent routing loops in TUN mode.');
 
-		s = m.section(form.NamedSection, 'dns', 'dns', _('DNS routing'));
+		s = m.section(form.NamedSection, 'dns', 'dns', _('DNS'));
+		s.tab('dns', _('DNS'));
 
 		o = s.option(form.Flag, 'enabled', _('Enable DNS routing'));
 		o = s.option(form.Value, 'proxy_dns', _('Proxy DNS server'));
@@ -107,7 +113,8 @@ return view.extend({
 		o = s.option(form.DynamicList, 'direct_domains', _('Direct domains'));
 		o = s.option(form.DynamicList, 'proxy_domains', _('Proxy domains'));
 
-		s = m.section(form.NamedSection, 'subscription', 'subscription', _('Subscription'));
+		s = m.section(form.NamedSection, 'main', 'subscription', _('Подписка'));
+		s.tab('subscription', _('Подписка'));
 
 		o = s.option(form.Flag, 'enabled', _('Enable subscription'));
 		o = s.option(form.Value, 'url', _('Subscription URL'));
@@ -115,9 +122,9 @@ return view.extend({
 		o = s.option(form.Value, 'update_interval', _('Update interval (hours)'));
 		o.datatype = 'uinteger';
 
-		var node = m.render();
-
-		node.appendChild(E('div', { 'class': 'cbi-section' }, [
+		return m.render().then(function(node) {
+			node.classList.add('olcrtcwrt-forkop-settings');
+			node.appendChild(E('div', { 'class': 'cbi-section' }, [
 			E('h3', {}, _('Binary management')),
 			E('p', {}, _('Download the latest olcrtcwrt and WDTT binaries for this architecture.')),
 			E('button', {
@@ -155,7 +162,8 @@ return view.extend({
 			])
 		]));
 
-		return node;
+			return node;
+		});
 	},
 
 	handleDownload: function(ev) {

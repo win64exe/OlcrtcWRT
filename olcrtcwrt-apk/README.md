@@ -8,9 +8,9 @@ LuCI application for managing **olcrtcwrt** (TCP-over-WebRTC tunnel) and **WDTT*
 - Интерфейс LuCI в стиле forkop с отдельными вкладками:
   - **Панель** — сводка состояния узлов, ping и трафик
   - **Селекторы** — настройка нескольких узлов olcrtc и WDTT
-  - **Настройки** — глобальные параметры, автозапуск и маршрутизация
-  - **Диагностика** — статусы служб, логи и проверка nftables
-  - **Мониторинг** — периодическое обновление состояния и счётчиков
+  - **Настройки** — вкладки параметров в стиле forkop: общие, прокси/маршрутизация, DNS и подписка
+  - **Диагностика** — forkop-подобные карточки проверок, логи и проверка nftables
+  - **Мониторинг** — forkop-подобные фильтры активных/остановленных узлов, поиск, ping и счётчики трафика
   - **Компоненты** — проверка обновлений и установка olcrtc, WDTT и выбранного sing-box
 - APK содержит только интерфейс LuCI и backend; бинарные файлы в него не входят и загружаются отдельно под архитектуру роутера
 - Modern **JavaScript** LuCI views (no Lua controller)
@@ -69,7 +69,7 @@ The resulting `.apk` will be in `bin/packages/`.
 ## Install on router
 
 ```bash
-apk add --allow-untrusted luci-app-olcrtcwrt_1.0.0-7_all.apk
+apk add --allow-untrusted luci-app-olcrtcwrt_1.0.0-9_all.apk
 ```
 
 After installation, open LuCI at `Services -> Topkop`.

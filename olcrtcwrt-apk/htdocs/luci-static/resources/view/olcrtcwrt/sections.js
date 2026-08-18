@@ -115,7 +115,7 @@ return view.extend({
 
 		o = s.option(form.Value, 'extra_args', _('Extra arguments'));
 
-		s = m.section(form.NamedSection, 'subscription', 'subscription', _('Subscription'));
+		s = m.section(form.NamedSection, 'main', 'subscription', _('Subscription'));
 		o = s.option(form.Flag, 'enabled', _('Enable subscription'));
 		o = s.option(form.Value, 'url', _('Subscription URL'));
 		o = s.option(form.Flag, 'auto_update', _('Auto update'));
