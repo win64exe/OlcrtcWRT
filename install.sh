@@ -61,7 +61,9 @@ setup_tmp_dir() {
 }
 
 cleanup() {
-    [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR"
+    if [ -n "$TMP_DIR" ]; then
+        rm -rf "$TMP_DIR"
+    fi
 }
 trap cleanup EXIT
 
@@ -430,9 +432,10 @@ print_menu() {
     info "========================================"
     printf '\n'
     echo "  1) Install / Update OlcrtcWRT + sing-box"
-    echo "  2) Install / Update sing-box only"
-    echo "  3) Uninstall sing-box"
-    echo "  4) Exit"
+    echo "  2) Install / Update OlcrtcWRT APK only"
+    echo "  3) Install / Update sing-box only"
+    echo "  4) Uninstall sing-box"
+    echo "  5) Exit"
     printf '\n'
 }
 
@@ -441,7 +444,9 @@ usage() {
 Usage: $0 [command]
 
 Commands:
-  install    Install / Update OlcrtcWRT and sing-box
+  install    Install / Update OlcrtcWRT APK and sing-box
+  apk        Install / Update only the OlcrtcWRT APK
+  install-apk Alias for apk
   sing-box   Install / Update sing-box only
   uninstall  Remove sing-box binary and service
 
@@ -450,6 +455,7 @@ EOF
 }
 
 prompt_sing_box_choice() {
+    SING_BOX_CHOICE="skip"
     printf '\nChoose sing-box variant:\n'
     echo "  1) Official sing-box ($SING_BOX_OFFICIAL)"
     echo "  2) sing-box-extended ($SING_BOX_EXTENDED)"
@@ -457,15 +463,16 @@ prompt_sing_box_choice() {
     printf 'Choice [1-3]: '
     read_input _choice
     case "$_choice" in
-        1) printf 'official' ;;
-        2) printf 'extended' ;;
-        3) printf 'skip' ;;
-        *) warn "Invalid choice, skipping sing-box."; printf 'skip' ;;
+        1) SING_BOX_CHOICE="official" ;;
+        2) SING_BOX_CHOICE="extended" ;;
+        3) SING_BOX_CHOICE="skip" ;;
+        *) warn "Invalid choice, skipping sing-box." ;;
     esac
 }
 
 run_install() {
-    _sb="$(prompt_sing_box_choice)"
+    prompt_sing_box_choice
+    _sb="$SING_BOX_CHOICE"
 
     if [ "$_sb" != "skip" ]; then
         install_sing_box "$_sb"
@@ -475,7 +482,7 @@ run_install() {
 
     install_apk_package
     info "Installation complete."
-    info "Open LuCI and navigate to Services -> OlcrtcWRT to configure."
+    info "Open LuCI and navigate to Services -> Topkop to configure."
 }
 
 main() {
@@ -486,9 +493,13 @@ main() {
             run_install
             return
             ;;
+        apk|install-apk|package)
+            install_apk_package
+            return
+            ;;
         sing-box)
-            print_menu
-            _sb="$(prompt_sing_box_choice)"
+            prompt_sing_box_choice
+            _sb="$SING_BOX_CHOICE"
             if [ "$_sb" != "skip" ]; then
                 install_sing_box "$_sb"
             else
@@ -508,20 +519,22 @@ main() {
 
     while true; do
         print_menu
-        printf 'Choose an option [1-4]: '
+        printf 'Choose an option [1-5]: '
         read_input _choice
         case "$_choice" in
             1) run_install ;;
-            2)
-                _sb="$(prompt_sing_box_choice)"
+            2) install_apk_package ;;
+            3)
+                prompt_sing_box_choice
+                _sb="$SING_BOX_CHOICE"
                 if [ "$_sb" != "skip" ]; then
                     install_sing_box "$_sb"
                 else
                     info "Skipping sing-box installation."
                 fi
                 ;;
-            3) uninstall_sing_box ;;
-            4) info "Bye!"; break ;;
+            4) uninstall_sing_box ;;
+            5) info "Bye!"; break ;;
             *) warn "Invalid option, please try again." ;;
         esac
         printf '\nPress Enter to continue...'

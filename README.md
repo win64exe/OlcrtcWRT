@@ -21,17 +21,23 @@ sh -c "$(wget -O - https://raw.githubusercontent.com/win64exe/OlcrtcWRT/refs/hea
 
 > **Примечание:** форма `sh <(wget -O - …)` (process substitution) может нарушать работу интерактивного ввода в некоторых шеллах, поэтому мы рекомендуем именно `sh -c "$(wget -O - …)"`.
 
-`install.sh` скачает последний `luci-app-olcrtcwrt` .apk из GitHub Releases и предложит выбрать вариант sing-box:
+`install.sh` скачает последний `luci-app-olcrtcwrt` .apk из GitHub Releases и предложит выбрать вариант sing-box. В меню APK можно устанавливать отдельно, без установки sing-box:
 
-1. **Official sing-box** (SagerNet/sing-box)
-2. **sing-box-extended** (shtorm-7/sing-box-extended)
-3. **Пропустить sing-box**
+1. **OlcrtcWRT + sing-box**
+2. **Только OlcrtcWRT APK**
+3. **Только sing-box**
+4. **Удалить sing-box**
+5. **Выход**
 
 ## Неинтерактивный режим
 
 ```bash
 # Установить OlcrtcWRT + sing-box
 sh install.sh install
+
+# Установить или обновить только OlcrtcWRT APK
+sh install.sh apk
+# Также доступны команды install-apk и package
 
 # Установить/обновить только sing-box
 sh install.sh sing-box
@@ -53,6 +59,12 @@ sha256sum -c install.sh.sha256 && sh install.sh
 ```
 
 Если в системе нет `wget`, замените `wget -qO файл URL` на `curl -fsSL -o файл URL`.
+
+Для запуска удалённого скрипта только с установкой APK используйте:
+
+```bash
+sh -c "$(wget -O - https://raw.githubusercontent.com/win64exe/OlcrtcWRT/refs/heads/dev/install.sh)" _ apk
+```
 
 После установки откройте LuCI: **Сервисы → Topkop**. Доступны разделы **Селекторы**, **Настройки**, **Диагностика**, **Панель**, **Мониторинг** и **Компоненты**. В «Компонентах» можно проверить версии и установить olcrtc, WDTT, официальный sing-box или sing-box extended.
 
