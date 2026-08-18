@@ -3,13 +3,15 @@
 		"description": "Grant access to olcrtcwrt and WDTT management",
 		"read": {
 			"ubus": {
-				"olcrtcwrt": ["status", "nodes", "ping", "traffic", "logs", "nftables", "validate", "components_status"]
+				"olcrtcwrt": ["status", "nodes", "ping", "traffic", "logs", "nftables", "validate"],
+			"olcrtcwrt_components": ["status"]
 			},
 			"uci": ["olcrtcwrt"]
 		},
 		"write": {
 			"ubus": {
-				"olcrtcwrt": ["start", "stop", "restart", "download", "update_subscription", "components_install"]
+				"olcrtcwrt": ["start", "stop", "restart", "download", "update_subscription"],
+			"olcrtcwrt_components": ["install"]
 			},
 			"uci": ["olcrtcwrt"],
 			"file": {

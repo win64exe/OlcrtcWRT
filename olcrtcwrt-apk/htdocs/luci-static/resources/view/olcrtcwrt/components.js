@@ -4,13 +4,13 @@
 'require ui';
 
 var callComponentsStatus = rpc.declare({
-	object: 'olcrtcwrt',
-	method: 'components_status',
+	object: 'olcrtcwrt_components',
+	method: 'status',
 	reject: true
 });
 var callComponentsInstall = rpc.declare({
-	object: 'olcrtcwrt',
-	method: 'components_install',
+	object: 'olcrtcwrt_components',
+	method: 'install',
 	params: { component: '', variant: '' },
 	reject: true
 });
