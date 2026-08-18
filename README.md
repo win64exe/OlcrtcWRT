@@ -39,6 +39,7 @@ sh install.sh install
 sh install.sh apk
 # Также доступны команды install-apk и package
 # При конфликте старой локальной APK-записи установщик удалит только старый пакет и повторит установку.
+# Если в /etc/apk/arch отсутствует архитектура all, установщик добавит её для LuCI APK.
 
 # Установить/обновить только sing-box
 sh install.sh sing-box

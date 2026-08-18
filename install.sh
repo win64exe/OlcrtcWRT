@@ -383,9 +383,21 @@ get_apk_download_url() {
     printf '%s' "$_url"
 }
 
+prepare_openwrt_apk_arch() {
+    if [ "$SYSTEM" != "openwrt" ] || [ ! -f /etc/apk/arch ]; then
+        return 0
+    fi
+
+    if ! grep -qx 'all' /etc/apk/arch; then
+        warn "OpenWrt /etc/apk/arch does not contain 'all'; adding it for LuCI APK compatibility."
+        printf '\nall\n' >> /etc/apk/arch
+    fi
+}
+
 install_apk_package() {
     check_root
     detect_fetcher
+    prepare_openwrt_apk_arch
 
     _pkg_mgr="$(detect_pkg_mgr)"
     if [ -z "$_pkg_mgr" ]; then
