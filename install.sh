@@ -9,7 +9,7 @@ set -e
 # Configuration
 # -----------------------------------------------------------------------------
 PROJECT_REPO="win64exe/OlcrtcWRT"
-APK_PKG_VERSION="1.0.0-10"
+APK_PKG_VERSION="1.0.0-11"
 APK_TAG="v${APK_PKG_VERSION%%-*}"
 APK_NAME="luci-app-olcrtcwrt_${APK_PKG_VERSION}_all.apk"
 APK_NAME_PATTERN="luci-app-olcrtcwrt_.*_all\.apk"

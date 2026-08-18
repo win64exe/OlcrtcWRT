@@ -1,4 +1,5 @@
 'use strict';
+'require baseclass';
 
 var injected = false;
 
@@ -396,7 +397,7 @@ var css = `
 }
 `;
 
-return {
+return baseclass.extend({
 	inject: function() {
 		if (injected || !document.head)
 			return;
@@ -404,4 +405,4 @@ return {
 		document.head.appendChild(style);
 		injected = true;
 	}
-};
+});
