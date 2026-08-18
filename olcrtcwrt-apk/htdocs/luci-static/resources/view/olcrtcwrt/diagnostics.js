@@ -1,16 +1,38 @@
 'use strict';
 'require view';
-'require ubus';
+'require rpc';
 'require ui';
+
+var callStatus = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'status',
+	reject: true
+});
+var callLogs = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'logs',
+	params: { type: '', lines: 50 },
+	reject: true
+});
+var callNftables = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'nftables',
+	reject: true
+});
+var callValidate = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'validate',
+	reject: true
+});
 
 return view.extend({
 	load: function() {
 		return Promise.all([
-			ubus.call('olcrtcwrt', 'status', {}),
-			ubus.call('olcrtcwrt', 'logs', { type: 'olcrtcwrt', lines: 50 }),
-			ubus.call('olcrtcwrt', 'logs', { type: 'wdtt', lines: 50 }),
-			ubus.call('olcrtcwrt', 'nftables', {}),
-			ubus.call('olcrtcwrt', 'validate', {})
+			callStatus(),
+			callLogs({ type: 'olcrtcwrt', lines: 50 }),
+			callLogs({ type: 'wdtt', lines: 50 }),
+			callNftables(),
+			callValidate()
 		]).catch(function(err) {
 			ui.addNotification(null, E('p', _('Failed to load diagnostics: %s').format(err.message)));
 			return [{}, '', '', { ruleset: '' }, { valid: false, message: err.message }];

@@ -3,8 +3,20 @@
 'require uci';
 'require form';
 'require ui';
-'require ubus';
+'require rpc';
 'require dom';
+
+var callDownload = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'download',
+	reject: true
+});
+var callFileWrite = rpc.declare({
+	object: 'file',
+	method: 'write',
+	params: { path: '', data: '', base64: false, mode: 0 },
+	reject: true
+});
 
 function arrayBufferToBase64(buffer) {
 	var bytes = new Uint8Array(buffer);
@@ -147,7 +159,7 @@ return view.extend({
 	},
 
 	handleDownload: function(ev) {
-		return ubus.call('olcrtcwrt', 'download', {}).then(function() {
+		return callDownload().then(function() {
 			ui.addNotification(null, E('p', _('Binaries downloaded successfully.')));
 		}).catch(function(err) {
 			ui.addNotification(null, E('p', _('Failed to download binaries: %s').format(err.message)));
@@ -160,7 +172,7 @@ return view.extend({
 			reader.onload = function(e) {
 				var base64 = arrayBufferToBase64(e.target.result);
 				// mode 493 == octal 0755 (executable)
-				return ubus.call('file', 'write', {
+				return callFileWrite({
 					path: path,
 					data: base64,
 					base64: true,

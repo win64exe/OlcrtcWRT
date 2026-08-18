@@ -1,17 +1,53 @@
 'use strict';
 'require view';
-'require ubus';
+'require rpc';
 'require ui';
 'require form';
 'require dom';
 'require request';
 
+var callStatus = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'status',
+	reject: true
+});
+var callPing = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'ping',
+	reject: true
+});
+var callTraffic = rpc.declare({
+	object: 'olcrtcwrt',
+	method: 'traffic',
+	reject: true
+});
+var callNodeAction = {
+	start: rpc.declare({
+		object: 'olcrtcwrt',
+		method: 'start',
+		params: { type: '', section: '' },
+		reject: true
+	}),
+	stop: rpc.declare({
+		object: 'olcrtcwrt',
+		method: 'stop',
+		params: { type: '', section: '' },
+		reject: true
+	}),
+	restart: rpc.declare({
+		object: 'olcrtcwrt',
+		method: 'restart',
+		params: { type: '', section: '' },
+		reject: true
+	})
+};
+
 return view.extend({
 	load: function() {
 		return Promise.all([
-			ubus.call('olcrtcwrt', 'status', {}),
-			ubus.call('olcrtcwrt', 'ping', {}),
-			ubus.call('olcrtcwrt', 'traffic', {})
+			callStatus(),
+			callPing(),
+			callTraffic()
 		]).catch(function(err) {
 			ui.addNotification(null, E('p', _('Failed to load dashboard data: %s').format(err.message)));
 			return [{}, {}, {}];
@@ -21,9 +57,9 @@ return view.extend({
 	pollStatus: function() {
 		var self = this;
 		return Promise.all([
-			ubus.call('olcrtcwrt', 'status', {}),
-			ubus.call('olcrtcwrt', 'ping', {}),
-			ubus.call('olcrtcwrt', 'traffic', {})
+			callStatus(),
+			callPing(),
+			callTraffic()
 		]).then(function(data) {
 			var status = data[0] || {};
 			var ping = data[1] || {};
@@ -131,7 +167,7 @@ return view.extend({
 	handleStartStop: function(nodeName, action, ev) {
 		var type = nodeName.indexOf('wdtt') === 0 ? 'wdtt' : 'olcrtcwrt';
 		var section = nodeName.replace(/^(olcrtcwrt|wdtt)_/, '');
-		return ubus.call('olcrtcwrt', action, { type: type, section: section }).then(function() {
+		return callNodeAction[action]({ type: type, section: section }).then(function() {
 			ui.addNotification(null, E('p', _('%s %sed').format(nodeName, action)));
 		}).catch(function(err) {
 			ui.addNotification(null, E('p', _('Failed to %s %s: %s').format(action, nodeName, err.message)));
