@@ -14,6 +14,7 @@ APK_TAG="v${APK_PKG_VERSION%%-*}"
 APK_NAME="luci-app-olcrtcwrt_${APK_PKG_VERSION}_all.apk"
 APK_NAME_PATTERN="luci-app-olcrtcwrt_.*_all\.apk"
 APK_FALLBACK_URL="https://github.com/$PROJECT_REPO/releases/download/${APK_TAG}/${APK_NAME}"
+APK_DEPENDENCIES="luci-base curl ca-bundle ca-certificates dnsmasq wireguard-tools jq iputils-ping rpcd-mod-ucode rpcd-mod-file ucode ucode-mod-fs ucode-mod-uci"
 SING_BOX_OFFICIAL="SagerNet/sing-box"
 SING_BOX_EXTENDED="shtorm-7/sing-box-extended"
 
@@ -383,6 +384,14 @@ get_apk_download_url() {
     printf '%s' "$_url"
 }
 
+preserve_apk_dependencies() {
+    # Make dependencies explicit in apk world before removing only our package.
+    # This prevents apk del from treating them as orphaned packages.
+    for _dep in $APK_DEPENDENCIES; do
+        apk add --no-network "$_dep" >/dev/null 2>&1 || true
+    done
+}
+
 prepare_openwrt_apk_arch() {
     if [ "$SYSTEM" != "openwrt" ] || [ ! -f /etc/apk/arch ]; then
         return 0
@@ -426,7 +435,8 @@ install_apk_package() {
     if [ "$_pkg_mgr" = "apk" ]; then
         info "Installing with apk..."
         if ! apk add --allow-untrusted --force-overwrite "$_apk_file"; then
-            warn "The existing OlcrtcWRT package has a pinned local APK constraint. Retrying after removing the old package..."
+            warn "The existing OlcrtcWRT package has a pinned local APK constraint. Retrying after removing only the old package..."
+            preserve_apk_dependencies
             apk del luci-app-olcrtcwrt >/dev/null 2>&1 || true
             apk add --allow-untrusted --force-overwrite "$_apk_file"
         fi
