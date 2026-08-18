@@ -147,9 +147,6 @@ return view.extend({
 		o = s.option(form.Value, 'update_interval', _('Интервал обновления (часы)'));
 		o.datatype = 'uinteger';
 
-		return m.render().then(function(node) {
-			node.classList.add('olcrtcwrt-forkop-selectors');
-			return node;
-		});
+		return m.render();
 	}
 });

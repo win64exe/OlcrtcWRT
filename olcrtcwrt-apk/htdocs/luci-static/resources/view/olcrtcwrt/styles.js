@@ -5,7 +5,6 @@ var injected = false;
 
 var css = `
 .olcrtcwrt-forkop-page,
-.olcrtcwrt-forkop-settings,
 .fkp_updates-page,
 .fkp_monitoring-page,
 .fkp_diagnostic-page {
@@ -13,44 +12,44 @@ var css = `
 	min-width: 0;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-table {
+#cbi-olcrtcwrt .cbi-section-table {
 	width: 100%;
 	border: 2px var(--background-color-low, lightgray) solid;
 	border-radius: 4px;
 	overflow: hidden;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-table .tr {
+#cbi-olcrtcwrt .cbi-section-table .tr {
 	min-height: 44px;
 	align-items: center;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-table .tr:not(.table-titles):hover {
+#cbi-olcrtcwrt .cbi-section-table .tr:not(.table-titles):hover {
 	background: rgba(127,127,127,.08);
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-table .th {
+#cbi-olcrtcwrt .cbi-section-table .th {
 	font-size: 11px;
 	font-weight: 600;
 	text-transform: uppercase;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-create {
+#cbi-olcrtcwrt .cbi-section-create {
 	margin-top: 10px;
 	padding: 10px;
 	border: 2px var(--background-color-low, lightgray) solid;
 	border-radius: 4px;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-create-name {
+#cbi-olcrtcwrt .cbi-section-create-name {
 	min-height: 34px;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-actions {
+#cbi-olcrtcwrt .cbi-section-actions {
 	white-space: nowrap;
 }
 
-.olcrtcwrt-forkop-selectors .cbi-section-descr {
+#cbi-olcrtcwrt .cbi-section-descr {
 	margin-bottom: 10px;
 }
 

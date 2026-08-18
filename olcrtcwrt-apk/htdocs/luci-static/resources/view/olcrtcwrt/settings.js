@@ -123,7 +123,6 @@ return view.extend({
 		o.datatype = 'uinteger';
 
 		return m.render().then(function(node) {
-			node.classList.add('olcrtcwrt-forkop-settings');
 			node.appendChild(E('div', { 'class': 'cbi-section' }, [
 			E('h3', {}, _('Binary management')),
 			E('p', {}, _('Download the latest olcrtcwrt and WDTT binaries for this architecture.')),
