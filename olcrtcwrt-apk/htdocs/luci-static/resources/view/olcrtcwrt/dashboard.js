@@ -142,7 +142,7 @@ return view.extend({
 		var nodes = status.nodes || {};
 
 		this.pollFn = L.bind(this.pollStatus, this);
-		L.Request.poll.add(this.pollFn, 5000);
+		L.poll.add(this.pollFn, 5);
 
 		var tbody = E('tbody', { 'id': 'olcrtcwrt-nodes-body' });
 
@@ -194,7 +194,7 @@ return view.extend({
 
 	remove: function() {
 		if (this.pollFn)
-			L.Request.poll.remove(this.pollFn);
+			L.poll.remove(this.pollFn);
 		return this.super('remove', arguments);
 	}
 });

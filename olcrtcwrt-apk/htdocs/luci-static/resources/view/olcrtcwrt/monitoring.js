@@ -128,7 +128,7 @@ return view.extend({
 		styles.inject();
 		this.data = data;
 		this.pollFn = L.bind(this.poll, this);
-		L.Request.poll.add(this.pollFn, 5000);
+		L.poll.add(this.pollFn, 5);
 		var self = this;
 		var controls = E('div', { 'class': 'fkp_monitoring-page__controls' }, [
 			E('div', { 'class': 'fkp_monitoring-page__tabs' }, [
@@ -201,7 +201,7 @@ return view.extend({
 
 	remove: function() {
 		if (this.pollFn)
-			L.Request.poll.remove(this.pollFn);
+			L.poll.remove(this.pollFn);
 		return this.super('remove', arguments);
 	}
 });
