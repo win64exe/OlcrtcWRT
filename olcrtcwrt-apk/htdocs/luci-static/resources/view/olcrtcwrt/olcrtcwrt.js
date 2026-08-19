@@ -81,6 +81,9 @@ return view.extend({
 			_('Добавьте узел, выберите тип и откройте его параметры кнопкой «Изменить».'));
 		configureGridSection(s, _('Селектор'), _('Добавить селектор'));
 
+		s.tab('connection', _('Подключение'));
+		s.tab('runtime', _('Параметры'));
+
 		o = s.option(form.Value, 'label', _('Название'));
 		o.placeholder = _('Например: основной olcrtc');
 		o.rmempty = false;
