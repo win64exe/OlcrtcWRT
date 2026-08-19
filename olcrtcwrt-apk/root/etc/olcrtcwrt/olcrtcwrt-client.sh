@@ -90,13 +90,10 @@ build_args() {
 		transport=$(echo "$parsed" | sed -n '4p')
 		extra_args=$(echo "$parsed" | sed -n '5p')
 	else
-		local server_ref
-		config_get server_ref "$SECTION" server ""
-		[ -n "$server_ref" ] || server_ref="$SECTION"
-		config_get server_uri "$server_ref" server_uri
-		config_get shared_key "$server_ref" shared_key
-		config_get provider "$server_ref" provider "jitsi"
-		config_get transport "$server_ref" transport "datachannel"
+		config_get server_uri "$SECTION" server_uri
+		config_get shared_key "$SECTION" shared_key
+		config_get provider "$SECTION" provider "jitsi"
+		config_get transport "$SECTION" transport "datachannel"
 		config_get extra_args "$SECTION" extra_args ""
 	fi
 

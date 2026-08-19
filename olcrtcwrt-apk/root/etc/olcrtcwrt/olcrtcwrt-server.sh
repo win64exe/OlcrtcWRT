@@ -3,7 +3,7 @@
 . /lib/functions.sh
 
 CONFIG="olcrtcwrt"
-SECTION="${2:-wdtt_main}"
+SECTION="${2:-olcrtc_server}"
 BIN_DIR="/etc/olcrtcwrt/bin"
 PID_DIR="/var/run/olcrtcwrt"
 LOG_DIR="/var/log/olcrtcwrt"
@@ -15,10 +15,10 @@ BIN_FILE=""
 resolve_binary() {
 	local arch=$(uname -m)
 	case "$arch" in
-		aarch64) [ -x "$BIN_DIR/client-arm64" ] && BIN_FILE="$BIN_DIR/client-arm64" ;;
-		x86_64)  [ -x "$BIN_DIR/server-amd64" ] && BIN_FILE="$BIN_DIR/server-amd64" ;;
+		aarch64) [ -x "$BIN_DIR/olcrtc-linux-arm64" ] && BIN_FILE="$BIN_DIR/olcrtc-linux-arm64" ;;
+		x86_64)  [ -x "$BIN_DIR/olcrtcwrt" ] && BIN_FILE="$BIN_DIR/olcrtcwrt" ;;
 	esac
-	[ -z "$BIN_FILE" ] && BIN_FILE="$BIN_DIR/wdtt-server"
+	[ -z "$BIN_FILE" ] && BIN_FILE="$BIN_DIR/olcrtcwrt"
 }
 
 load_config() {
@@ -32,29 +32,34 @@ is_enabled() {
 }
 
 pid_file() {
-	echo "$PID_DIR/wdtt_${SECTION}.pid"
+	echo "$PID_DIR/olcrtcwrt_srv_${SECTION}.pid"
 }
 
 log_file() {
-	echo "$LOG_DIR/wdtt_${SECTION}.log"
+	echo "$LOG_DIR/olcrtcwrt_srv_${SECTION}.log"
 }
 
 build_args() {
-	local vps_host vps_port vk_hash password threads local_udp_port auto_captcha
-	config_get vps_host "$SECTION" vps_host
-	config_get vps_port "$SECTION" vps_port "56000"
-	config_get vk_hash "$SECTION" vk_hash
-	config_get password "$SECTION" password
-	config_get threads "$SECTION" threads "4"
-	config_get local_udp_port "$SECTION" local_udp_port "9000"
-	config_get_bool auto_captcha "$SECTION" auto_captcha 1
+	local room shared_key provider transport listen data_dir auth_url extra_args
+	config_get room "$SECTION" room
+	config_get shared_key "$SECTION" shared_key
+	config_get provider "$SECTION" provider "jitsi"
+	config_get transport "$SECTION" transport "datachannel"
+	config_get listen "$SECTION" listen
+	config_get data_dir "$SECTION" data_dir
+	config_get auth_url "$SECTION" auth_url
+	config_get extra_args "$SECTION" extra_args ""
 
-	if [ -z "$vps_host" ] || [ -z "$vk_hash" ] || [ -z "$password" ]; then
-		echo "Missing vps_host, vk_hash or password" >&2
+	if [ -z "$room" ] || [ -z "$shared_key" ]; then
+		echo "Missing room or shared_key" >&2
 		exit 1
 	fi
 
-	ARGS="--server=$vps_host:$vps_port --hash=$vk_hash --password=$password --threads=$threads --local-port=$local_udp_port --auto-captcha=$auto_captcha"
+	ARGS="srv --room=$room --key=$shared_key --provider=$provider --transport=$transport"
+	[ -n "$listen" ] && ARGS="$ARGS --listen=$listen"
+	[ -n "$data_dir" ] && { mkdir -p "$data_dir"; ARGS="$ARGS --data=$data_dir"; }
+	[ -n "$auth_url" ] && ARGS="$ARGS --auth-url=$auth_url"
+	[ -n "$extra_args" ] && ARGS="$ARGS $extra_args"
 }
 
 case "$1" in
@@ -69,16 +74,16 @@ case "$1" in
 		done
 		[ -n "$2" ] && SECTION="$2"
 		load_config
-		[ "$(is_enabled)" -eq 1 ] || { echo "wdtt not enabled"; exit 0; }
+		[ "$(is_enabled)" -eq 1 ] || { echo "olcrtcwrt server not enabled"; exit 0; }
 		resolve_binary
-		[ -x "$BIN_FILE" ] || { echo "wdtt binary not found ($BIN_FILE), run download first"; exit 1; }
+		[ -x "$BIN_FILE" ] || { echo "olcrtcwrt binary not found ($BIN_FILE), run download first"; exit 1; }
 
 		local PID_FILE LOG_FILE
 		PID_FILE=$(pid_file)
 		LOG_FILE=$(log_file)
 
 		if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-			echo "wdtt ($SECTION) already running"
+			echo "olcrtcwrt server ($SECTION) already running"
 			exit 0
 		fi
 
@@ -88,7 +93,7 @@ case "$1" in
 		else
 			nohup "$BIN_FILE" $ARGS > "$LOG_FILE" 2>&1 &
 			echo $! > "$PID_FILE"
-			echo "wdtt ($SECTION) started"
+			echo "olcrtcwrt server ($SECTION) started"
 		fi
 	;;
 	stop)
@@ -99,7 +104,7 @@ case "$1" in
 			kill "$(cat "$PID_FILE")" 2>/dev/null || true
 			rm -f "$PID_FILE"
 		fi
-		echo "wdtt ($SECTION) stopped"
+		echo "olcrtcwrt server ($SECTION) stopped"
 	;;
 	restart)
 		$0 stop "$2"

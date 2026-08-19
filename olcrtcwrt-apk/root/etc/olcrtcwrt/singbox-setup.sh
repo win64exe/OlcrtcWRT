@@ -45,22 +45,18 @@ extract_host() {
 
 add_node_bypass() {
 	local cfg="$1"
-	local node_type host connection_uri server_uri server_ref
+	local node_type host connection_uri server_uri
 	config_get node_type "$cfg" type
 	case "$node_type" in
 		olcrtcwrt)
 			config_get connection_uri "$cfg" connection_uri ""
-			config_get server_ref "$cfg" server ""
-			[ -n "$server_ref" ] || server_ref="$cfg"
-			config_get server_uri "$server_ref" server_uri ""
+			config_get server_uri "$cfg" server_uri ""
 			[ -n "$connection_uri" ] && host=$(extract_host "$connection_uri")
 			[ -n "$host" ] || host=$(extract_host "$server_uri")
 			[ -n "$host" ] && append_bypass_domain "$host"
 			;;
 		wdtt)
-			config_get server_ref "$cfg" server ""
-			[ -n "$server_ref" ] || server_ref="$cfg"
-			config_get host "$server_ref" vps_host ""
+			config_get host "$cfg" vps_host ""
 			[ -n "$host" ] && append_bypass_domain "$host"
 			;;
 	esac

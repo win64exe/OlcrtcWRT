@@ -75,12 +75,12 @@ function applyModalOnly(sectionRef) {
 	});
 }
 
-/* Общие колонки таблицы для узлов (label/enabled/type) + тип как display. */
-function addGridBasics(sectionRef, typeTab) {
+/* Общие колонки таблицы: название / включен / тип + тип как display. */
+function addGridBasics(sectionRef, typeTab, types) {
 	var o;
 
 	o = sectionRef.taboption(typeTab, form.Value, 'label', _('Название'));
-	o.placeholder = _('Например: основной olcrtc');
+	o.placeholder = _('Например: основной узел');
 	o.rmempty = false;
 	o.load = function(section_id) {
 		return uci.get(UCI_PACKAGE, section_id, 'label') || section_id;
@@ -102,31 +102,10 @@ function addGridBasics(sectionRef, typeTab) {
 		return nodeTypeDisplay(section_id);
 	};
 
-	o = sectionRef.taboption(typeTab, form.ListValue, 'type', _('Тип'));
-	o.value('olcrtcwrt', 'olcrtc');
-	o.value('wdtt', 'WDTT');
+	o = sectionRef.taboption(typeTab, form.ListValue, 'type', _('Протокол'));
+	for (var value in types)
+		o.value(value, types[value]);
 	o.rmempty = false;
-}
-
-/* ListValue со списком доступных серверов (для ссылки из клиентского узла). */
-function addServerRef(sectionRef, typeTab) {
-	var o = sectionRef.taboption(typeTab, form.ListValue, 'server', _('Сервер'));
-	o.rmempty = false;
-	o.load = function(section_id) {
-		var self = this;
-		self.keylist = [];
-		self.vallist = [];
-		var servers = uci.sections(UCI_PACKAGE, 'server') || [];
-		for (var i = 0; i < servers.length; i++) {
-			var name = servers[i]['.name'];
-			var label = uci.get(UCI_PACKAGE, name, 'label') || name;
-			self.value(name, label);
-		}
-		return uci.get(UCI_PACKAGE, section_id, 'server') || '';
-	};
-	o.depends('type', 'olcrtcwrt');
-	o.depends('type', 'wdtt');
-	return o;
 }
 
 function mountSection(map, type, title, createFn) {
@@ -143,7 +122,7 @@ return view.extend({
 		styles.injectGlobalStyles();
 
 		var m = new form.Map(UCI_PACKAGE, _('Topkop'),
-			_('Настройки OlcrtcWRT — клиенты olcrtc и WDTT.'));
+			_('Настройки OlcrtcWRT — клиенты olcrtc и WDTT, серверы и маршрутизация.'));
 		m.tabbed = true;
 		var s, o;
 
@@ -155,9 +134,13 @@ return view.extend({
 		s.tab('connection', _('Подключение'));
 		s.tab('runtime', _('Параметры'));
 
-		addGridBasics(s, 'connection');
-		addServerRef(s, 'connection');
+		addGridBasics(s, 'connection', {
+			'olcrtcwrt': 'olcrtc',
+			'wdtt': 'WDTT',
+			'bypass': _('Обход')
+		});
 
+		/* olcrtc client */
 		o = s.taboption('connection', form.Value, 'connection_uri', _('URI подключения'));
 		o.placeholder = 'olcrtc://provider?transport<opts>@room#key';
 		o.depends('type', 'olcrtcwrt');
@@ -168,52 +151,6 @@ return view.extend({
 				return _('Неверный формат. Ожидается olcrtc://provider?transport<opts>@room#key');
 			return true;
 		};
-
-		o = s.taboption('connection', form.Value, 'local_socks_host', _('Локальный SOCKS host'));
-		o.depends('type', 'olcrtcwrt');
-
-		o = s.taboption('connection', form.Value, 'local_socks_port', _('Локальный SOCKS порт'));
-		o.datatype = 'port';
-		o.depends('type', 'olcrtcwrt');
-
-		o = s.taboption('connection', form.Value, 'extra_args', _('Дополнительные аргументы'));
-		o.depends('type', 'olcrtcwrt');
-
-		o = s.taboption('connection', form.Value, 'dialer_proxy', _('Прокси для подключения'));
-		o.placeholder = _('Имя другого узла для SOCKS upstream');
-		o.depends('type', 'olcrtcwrt');
-		o.depends('type', 'wdtt');
-
-		o = s.taboption('runtime', form.Value, 'threads', _('Потоки'));
-		o.datatype = 'uinteger';
-		o.depends('type', 'wdtt');
-
-		o = s.taboption('runtime', form.Value, 'local_udp_port', _('Локальный UDP порт'));
-		o.datatype = 'port';
-		o.depends('type', 'wdtt');
-
-		o = s.taboption('runtime', form.Flag, 'auto_captcha', _('Автоматическая captcha'));
-		o.depends('type', 'wdtt');
-
-		o = s.taboption('runtime', form.DynamicList, 'bypass_ips', _('IPv4 сети/IP для обхода'));
-		o.datatype = 'ip4addr';
-		o.depends('type', 'bypass');
-
-		o = s.taboption('runtime', form.DynamicList, 'bypass_ips6', _('IPv6 сети/IP для обхода'));
-		o.datatype = 'ip6addr';
-		o.depends('type', 'bypass');
-
-		applyModalOnly(s);
-
-		/* ---------- Серверы ---------- */
-		s = m.section(form.GridSection, 'server', _('Серверы'),
-			_('Серверы: olcrtc-комната и WDTT VPS. Клиентские секции ссылаются на них.'));
-		configureGridSection(s, _('Сервер'), _('Добавить сервер'));
-
-		s.tab('connection', _('Подключение'));
-		s.tab('runtime', _('Параметры'));
-
-		addGridBasics(s, 'connection');
 
 		o = s.taboption('connection', form.Value, 'server_uri', _('URI сервера / Room UUID'));
 		o.depends('type', 'olcrtcwrt');
@@ -235,6 +172,22 @@ return view.extend({
 		o.value('videochannel', 'videochannel');
 		o.depends('type', 'olcrtcwrt');
 
+		o = s.taboption('connection', form.Value, 'local_socks_host', _('Локальный SOCKS host'));
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'local_socks_port', _('Локальный SOCKS порт'));
+		o.datatype = 'port';
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'extra_args', _('Дополнительные аргументы'));
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'dialer_proxy', _('Прокси для подключения'));
+		o.placeholder = _('Имя другого узла для SOCKS upstream');
+		o.depends('type', 'olcrtcwrt');
+		o.depends('type', 'wdtt');
+
+		/* WDTT client */
 		o = s.taboption('runtime', form.Value, 'vps_host', _('VPS host'));
 		o.depends('type', 'wdtt');
 
@@ -249,10 +202,116 @@ return view.extend({
 		o.password = true;
 		o.depends('type', 'wdtt');
 
+		o = s.taboption('runtime', form.Value, 'threads', _('Потоки'));
+		o.datatype = 'uinteger';
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'local_udp_port', _('Локальный UDP порт'));
+		o.datatype = 'port';
+		o.depends('type', 'wdtt');
+
 		o = s.taboption('runtime', form.Value, 'wireguard_config', _('Путь к WireGuard конфигурации'));
 		o.depends('type', 'wdtt');
 
 		o = s.taboption('runtime', form.Value, 'wireguard_iface', _('Имя WireGuard интерфейса'));
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Flag, 'auto_captcha', _('Автоматическая captcha'));
+		o.depends('type', 'wdtt');
+
+		/* bypass */
+		o = s.taboption('runtime', form.DynamicList, 'bypass_ips', _('IPv4 сети/IP для обхода'));
+		o.datatype = 'ip4addr';
+		o.depends('type', 'bypass');
+
+		o = s.taboption('runtime', form.DynamicList, 'bypass_ips6', _('IPv6 сети/IP для обхода'));
+		o.datatype = 'ip6addr';
+		o.depends('type', 'bypass');
+
+		applyModalOnly(s);
+
+		/* ---------- Серверы (локальные серверы) ---------- */
+		s = m.section(form.GridSection, 'server', _('Серверы'),
+			_('Серверы, запускаемые на этом роутере: olcrtc-комната и WDTT TURN-сервер.'));
+		configureGridSection(s, _('Сервер'), _('Добавить сервер'));
+
+		s.tab('connection', _('Подключение'));
+		s.tab('runtime', _('Параметры'));
+
+		addGridBasics(s, 'connection', {
+			'olcrtcwrt': 'olcrtc',
+			'wdtt': 'WDTT'
+		});
+
+		/* olcrtc server (srv mode) */
+		o = s.taboption('connection', form.Value, 'room', _('Room UUID / ID'));
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'shared_key', _('Общий ключ'));
+		o.password = true;
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.ListValue, 'provider', _('Провайдер'));
+		o.value('jitsi', 'Jitsi');
+		o.value('telemost', 'Yandex Telemost');
+		o.value('wbstream', 'WB Stream');
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.ListValue, 'transport', _('Транспорт'));
+		o.value('datachannel', 'datachannel');
+		o.value('vp8channel', 'vp8channel');
+		o.value('seichannel', 'seichannel');
+		o.value('videochannel', 'videochannel');
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'listen', _('Адрес прослушивания'));
+		o.placeholder = '0.0.0.0:56001';
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'data_dir', _('Каталог данных'));
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'auth_url', _('Auth URL'));
+		o.depends('type', 'olcrtcwrt');
+
+		o = s.taboption('connection', form.Value, 'extra_args', _('Дополнительные аргументы'));
+		o.depends('type', 'olcrtcwrt');
+
+		/* WDTT server (free-turn-proxy) */
+		o = s.taboption('runtime', form.Value, 'server_address', _('Публичный адрес сервера'));
+		o.placeholder = 'vps.example.com:56000';
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'listen', _('Адрес прослушивания'));
+		o.placeholder = '0.0.0.0:56000';
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'connect', _('Локальный бэкенд (WG/Xray)'));
+		o.placeholder = '127.0.0.1:51820';
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.ListValue, 'mode', _('Режим туннеля'));
+		o.value('udp', 'udp (WireGuard)');
+		o.value('tcp', 'tcp (Xray/sing-box)');
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'obf_key', _('Ключ обфускации (hex)'));
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.ListValue, 'obf_profile', _('Профиль обфускации'));
+		o.value('none', 'none');
+		o.value('rtpopus', 'rtpopus');
+		o.value('rtpopus2', 'rtpopus2');
+		o.value('rtpopus3', 'rtpopus3');
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'obf_timing', _('Межпакетная задержка (например 10ms)'));
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'clients_file', _('Путь к clients.json'));
+		o.depends('type', 'wdtt');
+
+		o = s.taboption('runtime', form.Value, 'extra_args', _('Дополнительные аргументы'));
 		o.depends('type', 'wdtt');
 
 		applyModalOnly(s);
