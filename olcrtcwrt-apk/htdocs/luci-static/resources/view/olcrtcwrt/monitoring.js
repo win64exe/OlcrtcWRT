@@ -219,8 +219,9 @@ function createMonitoringContent(section) {
 	var o = section.option(form.DummyValue, '_mount_node');
 	o.rawhtml = true;
 	o.cfgvalue = function() {
-		MonitoringTab.initController();
-		return MonitoringTab.render();
+		var node = MonitoringTab.render();
+		window.setTimeout(function() { MonitoringTab.initController(); }, 0);
+		return node;
 	};
 }
 

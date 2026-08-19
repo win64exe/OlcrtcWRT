@@ -123,8 +123,9 @@ function createUpdatesContent(section) {
 	var o = section.option(form.DummyValue, '_mount_node');
 	o.rawhtml = true;
 	o.cfgvalue = function() {
-		UpdatesTab.initController();
-		return UpdatesTab.render();
+		var node = UpdatesTab.render();
+		window.setTimeout(function() { UpdatesTab.initController(); }, 0);
+		return node;
 	};
 }
 

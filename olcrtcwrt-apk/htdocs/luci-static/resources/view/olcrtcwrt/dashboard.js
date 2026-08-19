@@ -203,8 +203,9 @@ function createDashboardContent(section) {
 	var o = section.option(form.DummyValue, '_mount_node');
 	o.rawhtml = true;
 	o.cfgvalue = function() {
-		DashboardTab.initController();
-		return DashboardTab.render();
+		var node = DashboardTab.render();
+		window.setTimeout(function() { DashboardTab.initController(); }, 0);
+		return node;
 	};
 }
 

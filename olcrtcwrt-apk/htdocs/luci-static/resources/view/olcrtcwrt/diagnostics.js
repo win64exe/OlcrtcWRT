@@ -145,8 +145,9 @@ function createDiagnosticContent(section) {
 	var o = section.option(form.DummyValue, '_mount_node');
 	o.rawhtml = true;
 	o.cfgvalue = function() {
-		DiagnosticTab.initController();
-		return DiagnosticTab.render();
+		var node = DiagnosticTab.render();
+		window.setTimeout(function() { DiagnosticTab.initController(); }, 0);
+		return node;
 	};
 }
 
