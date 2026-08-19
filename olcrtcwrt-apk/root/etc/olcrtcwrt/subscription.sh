@@ -20,9 +20,11 @@ clear_subscription_nodes() {
 	uci show "$CONFIG" 2>/dev/null | grep "=node$" | while IFS= read -r line; do
 		section=$(echo "$line" | cut -d'=' -f1 | cut -d'.' -f2)
 		[ -z "$section" ] && continue
-		local origin
+		local origin srv
 		config_get origin "$section" origin ""
 		[ "$origin" = "subscription" ] || continue
+		config_get srv "$section" server ""
+		[ -n "$srv" ] && uci delete "${CONFIG}.${srv}" 2>/dev/null || true
 		uci delete "${CONFIG}.${section}" 2>/dev/null || true
 	done
 	uci commit "$CONFIG"
@@ -31,8 +33,8 @@ clear_subscription_nodes() {
 import_subscription() {
 	local url enabled
 	config_load "$CONFIG"
-	config_get url "main" url ""
-	config_get_bool enabled "main" enabled 0
+	config_get url "settings" subscription_url ""
+	config_get_bool enabled "settings" subscription_enabled 0
 
 	[ "$enabled" -eq 1 ] || { echo "Subscription not enabled"; return 0; }
 	[ -n "$url" ] || { echo "No subscription URL configured" >&2; return 1; }
@@ -64,18 +66,25 @@ import_subscription() {
 		local safe_name
 		safe_name=$(echo "$name" | tr -cd 'A-Za-z0-9_-' | head -c32)
 		[ -z "$safe_name" ] && safe_name="sub_$i"
-		local section_name="node_${safe_name}"
-		uci set "${CONFIG}.${section_name}=node"
-		uci set "${CONFIG}.${section_name}.type=$type"
-		uci set "${CONFIG}.${section_name}.enabled=1"
-		uci set "${CONFIG}.${section_name}.origin=subscription"
-		uci set "${CONFIG}.${section_name}.server_uri=$server_uri"
-		uci set "${CONFIG}.${section_name}.shared_key=$shared_key"
-		uci set "${CONFIG}.${section_name}.provider=$provider"
-		uci set "${CONFIG}.${section_name}.transport=$transport"
-		uci set "${CONFIG}.${section_name}.local_socks_host=127.0.0.1"
-		uci set "${CONFIG}.${section_name}.local_socks_port=1080"
-		uci set "${CONFIG}.${section_name}.name=$name"
+		local node_section="node_${safe_name}"
+		local server_section="server_${safe_name}"
+
+		uci set "${CONFIG}.${server_section}=server"
+		uci set "${CONFIG}.${server_section}.type=$type"
+		uci set "${CONFIG}.${server_section}.enabled=1"
+		uci set "${CONFIG}.${server_section}.server_uri=$server_uri"
+		uci set "${CONFIG}.${server_section}.shared_key=$shared_key"
+		uci set "${CONFIG}.${server_section}.provider=$provider"
+		uci set "${CONFIG}.${server_section}.transport=$transport"
+
+		uci set "${CONFIG}.${node_section}=node"
+		uci set "${CONFIG}.${node_section}.type=$type"
+		uci set "${CONFIG}.${node_section}.enabled=1"
+		uci set "${CONFIG}.${node_section}.origin=subscription"
+		uci set "${CONFIG}.${node_section}.server=$server_section"
+		uci set "${CONFIG}.${node_section}.local_socks_host=127.0.0.1"
+		uci set "${CONFIG}.${node_section}.local_socks_port=1080"
+		uci set "${CONFIG}.${node_section}.name=$name"
 		uci commit "$CONFIG"
 		i=$((i + 1))
 	done

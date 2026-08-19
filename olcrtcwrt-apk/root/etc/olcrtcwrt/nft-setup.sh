@@ -34,9 +34,9 @@ nft_setup() {
 	local proxy_ips proxy_ips6
 	local bypass_ips bypass_ips6
 
-	config_get proxy_mode "proxy" mode "disabled"
-	config_get proxy_port "proxy" socks_port "1080"
-	config_get_bool bypass_local "proxy" bypass_local 1
+	config_get proxy_mode "settings" proxy_mode "disabled"
+	config_get proxy_port "settings" socks_port "1080"
+	config_get_bool bypass_local "settings" bypass_local 1
 
 	case "$proxy_port" in
 		''|*[!0-9]*) proxy_port="1080" ;;
@@ -49,10 +49,10 @@ nft_setup() {
 		return 0
 	fi
 
-	proxy_ips=$(get_list "proxy" "proxy_ips")
-	proxy_ips6=$(get_list "proxy" "proxy_ips6")
-	bypass_ips=$(get_list "proxy" "bypass_ips")
-	bypass_ips6=$(get_list "proxy" "bypass_ips6")
+	proxy_ips=$(get_list "settings" "proxy_ips")
+	proxy_ips6=$(get_list "settings" "proxy_ips6")
+	bypass_ips=$(get_list "settings" "bypass_ips")
+	bypass_ips6=$(get_list "settings" "bypass_ips6")
 
 	if [ "$proxy_mode" = "global" ]; then
 		proxy_ips="0.0.0.0/0 $proxy_ips"

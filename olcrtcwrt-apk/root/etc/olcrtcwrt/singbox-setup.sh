@@ -45,18 +45,22 @@ extract_host() {
 
 add_node_bypass() {
 	local cfg="$1"
-	local node_type host connection_uri server_uri
+	local node_type host connection_uri server_uri server_ref
 	config_get node_type "$cfg" type
 	case "$node_type" in
 		olcrtcwrt)
 			config_get connection_uri "$cfg" connection_uri ""
-			config_get server_uri "$cfg" server_uri ""
+			config_get server_ref "$cfg" server ""
+			[ -n "$server_ref" ] || server_ref="$cfg"
+			config_get server_uri "$server_ref" server_uri ""
 			[ -n "$connection_uri" ] && host=$(extract_host "$connection_uri")
 			[ -n "$host" ] || host=$(extract_host "$server_uri")
 			[ -n "$host" ] && append_bypass_domain "$host"
 			;;
 		wdtt)
-			config_get host "$cfg" vps_host ""
+			config_get server_ref "$cfg" server ""
+			[ -n "$server_ref" ] || server_ref="$cfg"
+			config_get host "$server_ref" vps_host ""
 			[ -n "$host" ] && append_bypass_domain "$host"
 			;;
 	esac
@@ -64,13 +68,13 @@ add_node_bypass() {
 
 build_json() {
 	local socks_host socks_port proxy_mode fallback_dns proxy_dns routing_core bypass_local
-	config_get socks_host proxy socks_host "127.0.0.1"
-	config_get socks_port proxy socks_port "1080"
-	config_get proxy_mode proxy mode "disabled"
-	config_get routing_core proxy routing_core "nftables"
-	config_get bypass_local proxy bypass_local 1
-	config_get fallback_dns dns fallback_dns "8.8.8.8"
-	config_get proxy_dns dns proxy_dns "127.0.0.1#5353"
+	config_get socks_host settings socks_host "127.0.0.1"
+	config_get socks_port settings socks_port "1080"
+	config_get proxy_mode settings proxy_mode "disabled"
+	config_get routing_core settings routing_core "nftables"
+	config_get bypass_local settings bypass_local 1
+	config_get fallback_dns settings fallback_dns "8.8.8.8"
+	config_get proxy_dns settings proxy_dns "127.0.0.1#5353"
 
 	if [ "$routing_core" != "sing-box" ] || [ "$proxy_mode" = "disabled" ]; then
 		rm -f "$JSON_FILE"
@@ -89,13 +93,13 @@ build_json() {
 	fallback_dns_port="${fallback_dns##*#}"
 	[ "$fallback_dns_port" = "$fallback_dns_host" ] && fallback_dns_port="53"
 
-	config_list_foreach "proxy" "bypass_server_domains" append_bypass_domain
-	config_list_foreach "dns" "direct_domains" append_direct_domain
-	config_list_foreach "dns" "proxy_domains" append_proxied_domain
-	config_list_foreach "proxy" "proxy_ips" append_proxy_ip
-	config_list_foreach "proxy" "proxy_ips6" append_proxy_ip6
-	config_list_foreach "proxy" "bypass_ips" append_bypass_ip
-	config_list_foreach "proxy" "bypass_ips6" append_bypass_ip6
+	config_list_foreach "settings" "bypass_server_domains" append_bypass_domain
+	config_list_foreach "settings" "direct_domains" append_direct_domain
+	config_list_foreach "settings" "proxy_domains" append_proxied_domain
+	config_list_foreach "settings" "proxy_ips" append_proxy_ip
+	config_list_foreach "settings" "proxy_ips6" append_proxy_ip6
+	config_list_foreach "settings" "bypass_ips" append_bypass_ip
+	config_list_foreach "settings" "bypass_ips6" append_bypass_ip6
 
 	# Auto-bypass olcrtcwrt/wdtt server endpoints to avoid routing loops
 	config_foreach add_node_bypass node

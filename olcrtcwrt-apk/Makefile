@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-olcrtcwrt
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=20
+PKG_RELEASE:=21
 
 PKG_MAINTAINER:=OlcrtcWRT
 PKG_LICENSE:=WTFPL
@@ -49,6 +49,7 @@ endef
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
+[ -x /etc/olcrtcwrt/migrate-config.sh ] && /etc/olcrtcwrt/migrate-config.sh
 [ -x /etc/init.d/olcrtcwrt ] && /etc/init.d/olcrtcwrt enable
 exit 0
 endef

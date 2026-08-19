@@ -40,11 +40,13 @@ log_file() {
 }
 
 build_args() {
-	local vps_host vps_port vk_hash password threads local_udp_port auto_captcha
-	config_get vps_host "$SECTION" vps_host
-	config_get vps_port "$SECTION" vps_port "56000"
-	config_get vk_hash "$SECTION" vk_hash
-	config_get password "$SECTION" password
+	local vps_host vps_port vk_hash password threads local_udp_port auto_captcha server_ref
+	config_get server_ref "$SECTION" server ""
+	[ -n "$server_ref" ] || server_ref="$SECTION"
+	config_get vps_host "$server_ref" vps_host
+	config_get vps_port "$server_ref" vps_port "56000"
+	config_get vk_hash "$server_ref" vk_hash
+	config_get password "$server_ref" password
 	config_get threads "$SECTION" threads "4"
 	config_get local_udp_port "$SECTION" local_udp_port "9000"
 	config_get_bool auto_captcha "$SECTION" auto_captcha 1

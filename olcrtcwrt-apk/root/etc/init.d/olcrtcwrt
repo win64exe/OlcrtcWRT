@@ -49,8 +49,8 @@ start_service() {
 	config_load olcrtcwrt
 
 	local enabled autostart
-	config_get_bool enabled global enabled 0
-	config_get_bool autostart global autostart 0
+	config_get_bool enabled settings enabled 0
+	config_get_bool autostart settings autostart 0
 
 	[ "$enabled" -eq 1 ] || return 0
 	[ "$autostart" -eq 1 ] || return 0
@@ -58,8 +58,8 @@ start_service() {
 	config_foreach start_node node
 
 	local proxy_enabled routing_core
-	config_get_bool proxy_enabled proxy enabled 0
-	config_get routing_core proxy routing_core "nftables"
+	config_get_bool proxy_enabled settings proxy_enabled 0
+	config_get routing_core settings routing_core "nftables"
 
 	[ "$proxy_enabled" -eq 1 ] || return 0
 

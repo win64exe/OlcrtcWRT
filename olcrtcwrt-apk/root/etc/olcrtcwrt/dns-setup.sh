@@ -12,19 +12,19 @@ clear_dns() {
 
 setup_dns() {
 	local enabled proxy_dns fallback_dns
-	config_get_bool enabled "dns" enabled 0
+	config_get_bool enabled "settings" dns_enabled 0
 	[ "$enabled" -eq 1 ] || { clear_dns; return 0; }
 
-	config_get proxy_dns "dns" proxy_dns "127.0.0.1#5353"
-	config_get fallback_dns "dns" fallback_dns "8.8.8.8"
+	config_get proxy_dns "settings" proxy_dns "127.0.0.1#5353"
+	config_get fallback_dns "settings" fallback_dns "8.8.8.8"
 
 	clear_dns
 
 	add_direct() { echo "server=/$1/$fallback_dns" >> "$DNS_FILE"; }
 	add_proxy()  { echo "server=/$1/$proxy_dns"  >> "$DNS_FILE"; }
 
-	config_list_foreach "dns" "direct_domains" add_direct
-	config_list_foreach "dns" "proxy_domains"  add_proxy
+	config_list_foreach "settings" "direct_domains" add_direct
+	config_list_foreach "settings" "proxy_domains"  add_proxy
 
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 }

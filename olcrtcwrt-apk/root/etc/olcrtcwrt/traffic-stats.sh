@@ -34,10 +34,11 @@ wd_rx=$(counter_bytes_nft "wdtt_rx")
 wd_tx=$(counter_bytes_nft "wdtt_tx")
 
 # In sing-box TUN mode the olcrtcwrt counter comes from the TUN interface
-local routing_core proxy_mode
+routing_core=
+proxy_mode=
 config_load "$CONFIG"
-config_get routing_core proxy routing_core "nftables"
-config_get proxy_mode proxy mode "disabled"
+config_get routing_core settings routing_core "nftables"
+config_get proxy_mode settings proxy_mode "disabled"
 
 if [ "$routing_core" = "sing-box" ] && [ "$proxy_mode" != "disabled" ]; then
 	ol_rx=$(interface_bytes "tunolcrtcwrt" "rx")

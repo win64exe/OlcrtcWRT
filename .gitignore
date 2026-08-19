@@ -1,3 +1,4 @@
 *.apk
 *.apk.bad
 .DS_Store
+.tmp-askpass.sh

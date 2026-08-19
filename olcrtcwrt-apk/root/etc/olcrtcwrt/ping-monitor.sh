@@ -39,15 +39,20 @@ handle_node() {
 	[ -z "$node_type" ] && return 0
 
 	local host=""
+	local server_ref
 	case "$node_type" in
 		olcrtcwrt)
 			local uri
-			config_get uri "$cfg" server_uri ""
+			config_get server_ref "$cfg" server ""
+			[ -n "$server_ref" ] || server_ref="$cfg"
+			config_get uri "$server_ref" server_uri ""
 			[ -z "$uri" ] && config_get uri "$cfg" connection_uri ""
 			[ -z "$uri" ] || host=$(extract_host_from_uri "$uri")
 			;;
 		wdtt)
-			config_get host "$cfg" vps_host ""
+			config_get server_ref "$cfg" server ""
+			[ -n "$server_ref" ] || server_ref="$cfg"
+			config_get host "$server_ref" vps_host ""
 			;;
 	esac
 
