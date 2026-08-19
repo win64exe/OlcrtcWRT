@@ -1,6 +1,7 @@
 'use strict';
 'require baseclass';
 'require form';
+'require poll';
 'require rpc';
 'require ui';
 
@@ -105,7 +106,7 @@ var MonitoringTab = {
 		var self = this;
 		if (!this.pollFn) {
 			this.pollFn = L.bind(this.refresh, this);
-			L.poll.add(this.pollFn, 5);
+			poll.add(this.pollFn, 5);
 			this.refresh();
 		}
 	},

@@ -184,6 +184,13 @@ return view.extend({
 
 		o = s.taboption('runtime', form.Value, 'extra_args', _('Дополнительные аргументы'));
 
+		/* Параметры вкладок отображаются только в модальном окне редактирования,
+		 * в таблице остаются: название, включён, тип + кнопки действий. */
+		s.children.forEach(function(opt) {
+			if (opt.tab)
+				opt.modalonly = true;
+		});
+
 		/* ---------- Настройки: Общие ---------- */
 		s = m.section(form.NamedSection, 'global', 'global', _('Общие'));
 		o = s.option(form.Flag, 'enabled', _('Включить OlcrtcWRT'));
