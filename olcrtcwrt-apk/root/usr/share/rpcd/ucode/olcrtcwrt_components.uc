@@ -70,15 +70,18 @@ function run_install(component, variant) {
 }
 
 return {
-	status: {
-		call: function(req) {
-			return get_status();
-		}
-	},
-	install: {
-		args: { component: '', variant: 'official' },
-		call: function(req) {
-			return run_install(req.args.component, req.args.variant || 'official');
+	olcrtcwrt_components: {
+		status: {
+			call: function(req) {
+				return get_status();
+			}
+		},
+
+		install: {
+			args: { component: '', variant: 'official' },
+			call: function(req) {
+				return run_install(req.args.component, req.args.variant || 'official');
+			}
 		}
 	}
 };
