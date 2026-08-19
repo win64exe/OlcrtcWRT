@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-olcrtcwrt
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=19
+PKG_RELEASE:=20
 
 PKG_MAINTAINER:=OlcrtcWRT
 PKG_LICENSE:=WTFPL

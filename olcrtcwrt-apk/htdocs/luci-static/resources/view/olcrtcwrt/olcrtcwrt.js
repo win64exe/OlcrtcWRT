@@ -12,6 +12,15 @@
 
 var UCI_PACKAGE = 'olcrtcwrt';
 
+function nodeTypeDisplay(section_id) {
+	var t = uci.get(UCI_PACKAGE, section_id, 'type');
+	if (t === 'wdtt')
+		return 'WDTT';
+	if (t === 'bypass')
+		return _('Обход');
+	return 'olcrtc';
+}
+
 function renderSectionAdd(sectionRef, extra_class) {
 	var el = form.GridSection.prototype.renderSectionAdd.apply(sectionRef, [ extra_class ]);
 	var nameEl = el.querySelector('.cbi-section-create-name');
@@ -84,16 +93,38 @@ return view.extend({
 		s.tab('connection', _('Подключение'));
 		s.tab('runtime', _('Параметры'));
 
-		o = s.option(form.Value, 'label', _('Название'));
+		/* Название — в модальном окне редактирования (как у forkop) */
+		o = s.taboption('connection', form.Value, 'label', _('Название'));
 		o.placeholder = _('Например: основной olcrtc');
 		o.rmempty = false;
+		o.load = function(section_id) {
+			return uci.get(UCI_PACKAGE, section_id, 'label') || section_id;
+		};
 
-		o = s.option(form.Flag, 'enabled', _('Включен'));
+		/* Включён — редактируемый чекбокс прямо в таблице (как Enable у forkop) */
+		o = s.taboption('connection', form.Flag, 'enabled', _('Включен'));
+		o.rmempty = false;
+		o.editable = true;
+		o.width = '6rem';
 
-		o = s.option(form.ListValue, 'type', _('Тип'));
+		/* Тип — колонка-отображение в таблице (как Action у forkop) */
+		o = s.taboption('connection', form.DummyValue, '_type_display', _('Тип'));
+		o.modalonly = false;
+		o.rawhtml = true;
+		o.width = '7rem';
+		o.cfgvalue = function(section_id) {
+			return nodeTypeDisplay(section_id);
+		};
+		o.textvalue = function(section_id) {
+			return nodeTypeDisplay(section_id);
+		};
+
+		/* Тип — реальный список значений (только в модальном окне) */
+		o = s.taboption('connection', form.ListValue, 'type', _('Тип'));
 		o.value('olcrtcwrt', 'olcrtc');
 		o.value('wdtt', 'WDTT');
 		o.value('bypass', _('Обход'));
+		o.rmempty = false;
 
 		o = s.taboption('connection', form.ListValue, 'mode', _('Режим'));
 		o.value('client', _('Клиент'));
@@ -184,10 +215,10 @@ return view.extend({
 
 		o = s.taboption('runtime', form.Value, 'extra_args', _('Дополнительные аргументы'));
 
-		/* Параметры вкладок отображаются только в модальном окне редактирования,
-		 * в таблице остаются: название, включён, тип + кнопки действий. */
+		/* Параметры вкладок отображаются только в модальном окне редактирования.
+		 * В таблице остаются: «Включен» (editable) и «Тип» (_type_display) + действия. */
 		s.children.forEach(function(opt) {
-			if (opt.tab)
+			if (opt.tab && opt.modalonly === undefined && opt.option !== 'enabled')
 				opt.modalonly = true;
 		});
 

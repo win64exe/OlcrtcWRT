@@ -69,7 +69,7 @@ The resulting `.apk` will be in `bin/packages/`.
 ## Install on router
 
 ```bash
-apk add --allow-untrusted luci-app-olcrtcwrt_1.0.0-19_all.apk
+apk add --allow-untrusted luci-app-olcrtcwrt_1.0.0-20_all.apk
 ```
 
 After installation, open LuCI at `Services -> Topkop`.
