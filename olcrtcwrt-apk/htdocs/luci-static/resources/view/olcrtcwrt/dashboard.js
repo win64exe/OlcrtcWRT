@@ -1,43 +1,16 @@
 'use strict';
-'require view';
+'require baseclass';
+'require form';
 'require rpc';
 'require ui';
-'require view.olcrtcwrt.styles as styles';
 
-var callStatus = rpc.declare({
-	object: 'olcrtcwrt',
-	method: 'status',
-	reject: true
-});
-var callPing = rpc.declare({
-	object: 'olcrtcwrt',
-	method: 'ping',
-	reject: true
-});
-var callTraffic = rpc.declare({
-	object: 'olcrtcwrt',
-	method: 'traffic',
-	reject: true
-});
+var callStatus = rpc.declare({ object: 'olcrtcwrt', method: 'status', reject: true });
+var callPing = rpc.declare({ object: 'olcrtcwrt', method: 'ping', reject: true });
+var callTraffic = rpc.declare({ object: 'olcrtcwrt', method: 'traffic', reject: true });
 var callNodeAction = {
-	start: rpc.declare({
-		object: 'olcrtcwrt',
-		method: 'start',
-		params: { type: '', section: '' },
-		reject: true
-	}),
-	stop: rpc.declare({
-		object: 'olcrtcwrt',
-		method: 'stop',
-		params: { type: '', section: '' },
-		reject: true
-	}),
-	restart: rpc.declare({
-		object: 'olcrtcwrt',
-		method: 'restart',
-		params: { type: '', section: '' },
-		reject: true
-	})
+	start: rpc.declare({ object: 'olcrtcwrt', method: 'start', params: { type: '', section: '' }, reject: true }),
+	stop: rpc.declare({ object: 'olcrtcwrt', method: 'stop', params: { type: '', section: '' }, reject: true }),
+	restart: rpc.declare({ object: 'olcrtcwrt', method: 'restart', params: { type: '', section: '' }, reject: true })
 };
 
 function nodeType(name) {
@@ -52,149 +25,190 @@ function val(value, fallback) {
 	return value === undefined || value === null || value === '' ? fallback : value;
 }
 
-return view.extend({
-	load: function() {
-		return Promise.all([
-			callStatus(),
-			callPing(),
-			callTraffic()
-		]).catch(function(err) {
-			ui.addNotification(null, E('p', _('Не удалось загрузить данные панели: %s').format(err.message)));
-			return [{ nodes: {} }, {}, {}];
-		});
-	},
+function renderWidget(title, items) {
+	return E('div', { 'class': 'fkp_dashboard-page__widgets-section__item' }, [
+		E('b', { 'class': 'fkp_dashboard-page__widgets-section__item__title' }, title),
+		(items || []).map(function(item) {
+			return E('div', { 'class': 'fkp_dashboard-page__widgets-section__item__row ' + (item['class'] || '') }, [
+				E('span', { 'class': 'fkp_dashboard-page__widgets-section__item__row__key' }, item.key + ': '),
+				E('span', { 'class': 'fkp_dashboard-page__widgets-section__item__row__value' }, item.value)
+			]);
+		})
+	]);
+}
 
-	pollStatus: function() {
-		var self = this;
-		return Promise.all([
-			callStatus(),
-			callPing(),
-			callTraffic()
-		]).then(function(data) {
-			var status = data[0] || {};
-			var ping = data[1] || {};
-			var traffic = data[2] || {};
-			var nodes = status.nodes || {};
+function renderLatencyClass(latency) {
+	if (!latency)
+		return 'fkp_dashboard-page__outbound-grid__item__latency--empty';
+	if (latency < 800)
+		return 'fkp_dashboard-page__outbound-grid__item__latency--green';
+	if (latency < 1500)
+		return 'fkp_dashboard-page__outbound-grid__item__latency--yellow';
+	return 'fkp_dashboard-page__outbound-grid__item__latency--red';
+}
 
-			var tbody = document.getElementById('olcrtcwrt-nodes-body');
-			if (!tbody) return;
+var DashboardTab = {
+	pollFn: null,
 
-			Object.keys(nodes).forEach(function(nodeName) {
-				var state = nodes[nodeName] || 'unknown';
-				var nodePing = (ping || {})[nodeName] || '-';
-				var nodeTraffic = (traffic || {})[nodeName] || {};
-				var rx = nodeTraffic.rx || '0';
-				var tx = nodeTraffic.tx || '0';
-
-				var row = document.getElementById('node-row-' + nodeName);
-				if (!row) {
-					row = self.createNodeRow(nodeName);
-					tbody.appendChild(row);
-				}
-
-				var statusEl = document.getElementById('node-status-' + nodeName);
-				var pingEl = document.getElementById('node-ping-' + nodeName);
-				var trafficEl = document.getElementById('node-traffic-' + nodeName);
-
-				if (statusEl) {
-					statusEl.textContent = state === 'running' ? _('Работает') : _('Остановлен');
-					statusEl.style.color = state === 'running' ? 'var(--success-color-medium)' : 'var(--warn-color-medium)';
-				}
-				if (pingEl) pingEl.textContent = val(nodePing, '-') + (nodePing ? ' ms' : '');
-				if (trafficEl) trafficEl.textContent = rx + ' / ' + tx;
-			});
-		}).catch(function(err) {
-			console.error('olcrtcwrt dashboard poll error:', err);
-		});
-	},
-
-	createNodeRow: function(nodeName) {
-		var self = this;
-		return E('tr', { 'id': 'node-row-' + nodeName }, [
-			E('td', { 'data-label': _('Узел') }, E('strong', {}, nodeLabel(nodeName))),
-			E('td', { 'data-label': _('Тип') }, nodeType(nodeName)),
-			E('td', { 'id': 'node-status-' + nodeName, 'class': 'cbi-value-warning', 'data-label': _('Состояние') }, _('Неизвестно')),
-			E('td', { 'id': 'node-ping-' + nodeName, 'data-label': _('Ping') }, '-'),
-			E('td', { 'id': 'node-traffic-' + nodeName, 'data-label': _('Трафик RX / TX') }, '0 / 0'),
-			E('td', { 'data-label': _('Действия') }, [
-				E('button', {
-					'class': 'btn cbi-button cbi-button-apply',
-					'click': ui.createHandlerFn(self, 'handleStartStop', nodeName, 'start')
-				}, _('Запустить')),
-				' ',
-				E('button', {
-					'class': 'btn cbi-button cbi-button-reset',
-					'click': ui.createHandlerFn(self, 'handleStartStop', nodeName, 'stop')
-				}, _('Остановить')),
-				' ',
-				E('button', {
-					'class': 'btn cbi-button cbi-button-neutral',
-					'click': ui.createHandlerFn(self, 'handleStartStop', nodeName, 'restart')
-				}, _('Перезапустить'))
+	render: function() {
+		return E('div', { 'id': 'dashboard-status', 'class': 'fkp_dashboard-page' }, [
+			E('div', { 'class': 'fkp_dashboard-page__service-stopped', 'role': 'status' },
+				_('Служба OlcrtcWRT остановлена. Запустите службу, чтобы отобразить панель.')),
+			E('div', { 'class': 'fkp_dashboard-page__content' }, [
+				E('div', { 'class': 'fkp_dashboard-page__widgets-section' }, [
+					E('div', { 'id': 'dashboard-widget-traffic' },
+						renderWidget(_('Трафик'), [])),
+					E('div', { 'id': 'dashboard-widget-traffic-total' },
+						renderWidget(_('Трафик (всего)'), [])),
+					E('div', { 'id': 'dashboard-widget-system-info' },
+						renderWidget(_('Система'), [])),
+					E('div', { 'id': 'dashboard-widget-service-info' },
+						renderWidget(_('Службы'), []))
+				]),
+				E('div', { 'id': 'dashboard-sections-grid' }, [
+					E('div', { 'id': 'dashboard-sections-grid-skeleton',
+						'class': 'fkp_dashboard-page__outbound-section skeleton', 'style': 'height: 127px' })
+				])
 			])
 		]);
 	},
 
-	render: function(data) {
-		styles.inject();
+	initController: function() {
 		var self = this;
-		var status = data[0] || {};
-		var nodes = status.nodes || {};
+		if (!this.pollFn) {
+			this.pollFn = L.bind(this.refresh, this);
+			L.poll.add(this.pollFn, 5);
+			this.refresh();
+		}
+	},
 
-		this.pollFn = L.bind(this.pollStatus, this);
-		L.poll.add(this.pollFn, 5);
+	refresh: function() {
+		var self = this;
+		return Promise.all([callStatus(), callPing(), callTraffic()]).then(function(data) {
+			var status = data[0] || {};
+			var ping = data[1] || {};
+			var traffic = data[2] || {};
+			var nodes = status.nodes || {};
+			var names = Object.keys(nodes);
+			var running = names.filter(function(name) { return nodes[name] === 'running'; });
 
-		var tbody = E('tbody', { 'id': 'olcrtcwrt-nodes-body' });
+			var serviceStopped = document.querySelector('.fkp_dashboard-page__service-stopped');
+			if (serviceStopped)
+				serviceStopped.style.display = running.length ? 'none' : '';
 
-		Object.keys(nodes).forEach(function(nodeName) {
-			tbody.appendChild(self.createNodeRow(nodeName));
+			var trafficWidget = document.getElementById('dashboard-widget-traffic');
+			if (trafficWidget) {
+				var items = names.map(function(name) {
+					var t = traffic[name] || {};
+					return { key: nodeLabel(name), value: val(t.rx, '0') + ' / ' + val(t.tx, '0') };
+				});
+				trafficWidget.replaceChildren(renderWidget(_('Трафик'), items));
+			}
+
+			var trafficTotalWidget = document.getElementById('dashboard-widget-traffic-total');
+			if (trafficTotalWidget) {
+				var rxTotal = 0, txTotal = 0;
+				names.forEach(function(name) {
+					var t = traffic[name] || {};
+					rxTotal += parseInt(t.rx, 10) || 0;
+					txTotal += parseInt(t.tx, 10) || 0;
+				});
+				trafficTotalWidget.replaceChildren(renderWidget(_('Трафик (всего)'), [
+					{ key: _('RX'), value: String(rxTotal) },
+					{ key: _('TX'), value: String(txTotal) }
+				]));
+			}
+
+			var systemWidget = document.getElementById('dashboard-widget-system-info');
+			if (systemWidget) {
+				systemWidget.replaceChildren(renderWidget(_('Система'), [
+					{ key: _('Узлов'), value: String(names.length) },
+					{ key: _('Активных'), value: String(running.length) }
+				]));
+			}
+
+			var serviceWidget = document.getElementById('dashboard-widget-service-info');
+			if (serviceWidget) {
+				serviceWidget.replaceChildren(renderWidget(_('Службы'), [
+					{ key: _('olcrtc'), value: String(running.filter(function(n) { return nodeType(n) === 'olcrtc'; }).length) },
+					{ key: _('WDTT'), value: String(running.filter(function(n) { return nodeType(n) === 'WDTT'; }).length) }
+				]));
+			}
+
+			var nodesGrid = document.getElementById('dashboard-sections-grid');
+			if (nodesGrid)
+				nodesGrid.replaceChildren(self.renderNodeSection(names, nodes, ping, traffic));
+		}).catch(function(err) {
+			console.error('olcrtcwrt dashboard refresh error:', err);
 		});
+	},
 
-		return E('div', { 'class': 'cbi-map olcrtcwrt-forkop-page fkp_monitoring-page' }, [
-			E('h2', {}, _('Панель')),
-			E('p', {}, _('Состояние, ping и трафик узлов olcrtc и WDTT в реальном времени.')),
-			E('div', { 'class': 'fkp_monitoring-page__controls' }, [
-				E('div', { 'class': 'fkp_monitoring-page__actions' }, [
+	renderNodeSection: function(names, nodes, ping, traffic) {
+		var self = this;
+		var items = names.map(function(name) {
+			var running = nodes[name] === 'running';
+			var p = ping[name] || '';
+			var t = traffic[name] || {};
+			return E('div', {
+				'class': 'fkp_dashboard-page__outbound-grid__item' + (running ? ' fkp_dashboard-page__outbound-grid__item--active' : '')
+			}, [
+				E('div', { 'class': 'fkp_dashboard-page__outbound-grid__item__header' }, [
+					E('b', {}, nodeLabel(name)),
+					E('span', { 'class': 'fkp_dashboard-page__outbound-grid__item__type' }, nodeType(name))
+				]),
+				E('div', { 'class': 'fkp_dashboard-page__outbound-grid__item__footer' }, [
+					E('span', { 'class': 'fkp_dashboard-page__outbound-grid__item__latency ' + renderLatencyClass(p) },
+						p ? (p + ' ms') : _('нет ping')),
+					E('span', {}, _('RX/TX') + ': ' + val(t.rx, '0') + ' / ' + val(t.tx, '0'))
+				]),
+				E('div', { 'class': 'fkp_dashboard-page__outbound-grid__item__actions' }, [
 					E('button', {
 						'class': 'btn cbi-button cbi-button-apply',
-						'click': ui.createHandlerFn(this, 'handleRefresh')
-					}, _('Обновить'))
+						'click': ui.createHandlerFn(self, 'nodeAction', name, 'start')
+					}, _('Запустить')),
+					E('button', {
+						'class': 'btn cbi-button cbi-button-reset',
+						'click': ui.createHandlerFn(self, 'nodeAction', name, 'stop')
+					}, _('Остановить')),
+					E('button', {
+						'class': 'btn cbi-button cbi-button-neutral',
+						'click': ui.createHandlerFn(self, 'nodeAction', name, 'restart')
+					}, _('Перезапустить'))
 				])
+			]);
+		});
+		return E('div', { 'class': 'fkp_dashboard-page__outbound-section' }, [
+			E('div', { 'class': 'fkp_dashboard-page__outbound-section__title-section' }, [
+				E('b', { 'class': 'fkp_dashboard-page__outbound-section__title-section__title' }, _('Узлы'))
 			]),
-			E('div', { 'class': 'fkp_monitoring-page__table-wrap' }, [
-				E('table', { 'class': 'fkp_monitoring-page__table' }, [
-					E('thead', {}, [E('tr', {}, [
-						E('th', {}, _('Узел')),
-						E('th', {}, _('Тип')),
-						E('th', {}, _('Состояние')),
-						E('th', {}, _('Ping')),
-						E('th', {}, _('Трафик RX / TX')),
-						E('th', {}, _('Действия'))
-					])]),
-					tbody
-				])
-			]),
-			E('div', { 'class': 'cbi-section-descr' }, _('Обновление выполняется каждые 5 секунд.'))
+			E('div', { 'class': 'fkp_dashboard-page__outbound-grid' }, items.length ? items :
+				E('div', { 'class': 'fkp_dashboard-page__outbound-section centered', 'style': 'height: 60px' },
+					E('span', {}, _('Узлы не настроены'))))
 		]);
 	},
 
-	handleStartStop: function(nodeName, action, ev) {
-		var type = nodeName.indexOf('wdtt') === 0 ? 'wdtt' : 'olcrtcwrt';
-		var section = nodeName.replace(/^(olcrtcwrt|wdtt)_/, '');
+	nodeAction: function(name, action) {
+		var type = name.indexOf('wdtt') === 0 ? 'wdtt' : 'olcrtcwrt';
+		var section = name.replace(/^(olcrtcwrt|wdtt)_/, '');
 		return callNodeAction[action]({ type: type, section: section }).then(function() {
-			ui.addNotification(null, E('p', _('%s: %s выполнено').format(nodeLabel(nodeName), action)));
+			ui.addNotification(null, E('p', _('%s: %s выполнено').format(nodeLabel(name), action)));
+			return DashboardTab.refresh();
 		}).catch(function(err) {
-			ui.addNotification(null, E('p', _('Не удалось выполнить %s для %s: %s').format(action, nodeName, err.message)));
+			ui.addNotification(null, E('p', _('Не удалось выполнить %s для %s: %s').format(action, name, err.message)));
 		});
-	},
-
-	handleRefresh: function() {
-		return this.pollStatus();
-	},
-
-	remove: function() {
-		if (this.pollFn)
-			L.poll.remove(this.pollFn);
-		return this.super('remove', arguments);
 	}
+};
+
+function createDashboardContent(section) {
+	var o = section.option(form.DummyValue, '_mount_node');
+	o.rawhtml = true;
+	o.cfgvalue = function() {
+		DashboardTab.initController();
+		return DashboardTab.render();
+	};
+}
+
+return baseclass.extend({
+	DashboardTab: DashboardTab,
+	createDashboardContent: createDashboardContent
 });

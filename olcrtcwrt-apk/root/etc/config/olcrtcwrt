@@ -64,3 +64,8 @@ config dns 'dns'
 	list direct_domains 'lan'
 	list proxy_domains 'youtube.com'
 	list proxy_domains 'google.com'
+
+config dashboard 'dashboard'
+config monitoring 'monitoring'
+config diagnostic 'diagnostic'
+config updates 'updates'

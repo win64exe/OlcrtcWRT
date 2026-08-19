@@ -1,100 +1,156 @@
 'use strict';
-'require view';
+'require baseclass';
+'require form';
 'require rpc';
 'require ui';
-'require view.olcrtcwrt.styles as styles';
 
 var callStatus = rpc.declare({ object: 'olcrtcwrt', method: 'status', reject: true });
 var callLogs = rpc.declare({ object: 'olcrtcwrt', method: 'logs', params: { type: '', lines: 50 }, reject: true });
 var callNftables = rpc.declare({ object: 'olcrtcwrt', method: 'nftables', reject: true });
 var callValidate = rpc.declare({ object: 'olcrtcwrt', method: 'validate', reject: true });
+var callComponents = rpc.declare({ object: 'olcrtcwrt_components', method: 'status', reject: true });
 
-function alertCard(title, description, state, items) {
-	var summary = (items || []).map(function(item) {
-		return E('div', { 'class': 'fkp_diagnostic_alert__summary__item--' + item.state }, [
-			E('b', {}, item.key + ': '),
-			E('span', {}, item.value)
+function renderCheckSummary(items) {
+	var renderedItems = (items || []).map(function(item) {
+		var iconWrap = E('span', { 'class': 'fkp_diagnostic_alert__summary__item__icon' }, item.state === 'success' ? '✓' : item.state === 'warning' ? '!' : '×');
+		return E('div', { 'class': 'fkp_diagnostic_alert__summary__item fkp_diagnostic_alert__summary__item--' + item.state }, [
+			iconWrap,
+			E('b', {}, item.key),
+			E('div', {}, item.value)
 		]);
 	});
+	return E('div', { 'class': 'fkp_diagnostic_alert__summary' }, renderedItems);
+}
+
+function alertCard(state, title, description, items) {
+	var icon = state === 'success' ? '✓' : state === 'warning' ? '!' : '×';
 	return E('div', { 'class': 'fkp_diagnostic_alert fkp_diagnostic_alert--' + state }, [
-		E('div', { 'class': 'fkp_diagnostic_alert__icon' }, state === 'success' ? '✓' : state === 'warning' ? '!' : '×'),
+		E('span', { 'class': 'fkp_diagnostic_alert__icon' }, icon),
 		E('div', { 'class': 'fkp_diagnostic_alert__content' }, [
 			E('b', { 'class': 'fkp_diagnostic_alert__title' }, title),
-			E('div', { 'class': 'fkp_diagnostic_alert__description' }, description),
-			E('div', { 'class': 'fkp_diagnostic_alert__summary' }, summary)
-		])
+			E('div', { 'class': 'fkp_diagnostic_alert__description' }, description)
+		]),
+		E('div', {}, ''),
+		renderCheckSummary(items)
 	]);
 }
 
-return view.extend({
-	load: function() {
-		return Promise.all([
-			callStatus(),
-			callLogs({ type: 'olcrtcwrt', lines: 50 }),
-			callLogs({ type: 'wdtt', lines: 50 }),
-			callNftables(),
-			callValidate()
-		]).catch(function(err) {
-			ui.addNotification(null, E('p', _('Не удалось загрузить диагностику: %s').format(err.message)));
-			return [{ nodes: {} }, '', '', { ruleset: '' }, { valid: false, message: err.message }];
-		});
-	},
-
-	render: function(data) {
-		styles.inject();
-		var status = data[0] || {};
-		var olLogs = (data[1] && data[1].log) || '';
-		var wdLogs = (data[2] && data[2].log) || '';
-		var nftables = data[3] || {};
-		var validation = data[4] || {};
-		var nodes = status.nodes || {};
-		var names = Object.keys(nodes);
-		var running = names.filter(function(name) { return nodes[name] === 'running'; }).length;
-		var nftState = validation.valid ? 'success' : 'warning';
-
-		return E('div', { 'class': 'cbi-map olcrtcwrt-forkop-page fkp_diagnostic-page' }, [
+var DiagnosticTab = {
+	render: function() {
+		return E('div', { 'id': 'diagnostic-status', 'class': 'fkp_diagnostic-page' }, [
 			E('div', { 'class': 'fkp_diagnostic-page__left-bar' }, [
-				E('button', {
-					'class': 'btn cbi-button cbi-button-save',
-					'click': ui.createHandlerFn(this, 'refresh')
-				}, _('Запустить проверку снова')),
-				E('div', { 'class': 'fkp_diagnostic-page__checks' }, [
-					alertCard(_('Службы туннелей'), _('Состояние узлов olcrtc и WDTT.'), running ? 'success' : 'warning', [
-						{ key: _('Всего узлов'), value: String(names.length), state: 'success' },
-						{ key: _('Запущено'), value: String(running), state: running ? 'success' : 'warning' }
-					]),
-					alertCard(_('Проверка nftables'), validation.message || _('Проверка правил маршрутизации.'), nftState, [
-						{ key: _('Состояние'), value: validation.valid ? _('Корректно') : _('Ошибка или правила отсутствуют'), state: nftState }
-					]),
-					E('div', { 'class': 'fkp_diagnostic-page__card' }, [
-						E('b', { 'class': 'fkp_diagnostic-page__card-title' }, _('Таблица nftables')),
-						E('textarea', { 'class': 'fkp_diagnostic-page__log', 'readonly': 'readonly' }, nftables.ruleset || _('Правила не созданы'))
-					])
-				])
+				E('div', { 'id': 'fkp_diagnostic-page-run-check' }),
+				E('div', { 'class': 'fkp_diagnostic-page__checks', 'id': 'fkp_diagnostic-page-checks' })
 			]),
 			E('div', { 'class': 'fkp_diagnostic-page__right-bar' }, [
-				E('div', { 'class': 'fkp_diagnostic-page__card' }, [
-					E('b', { 'class': 'fkp_diagnostic-page__card-title' }, _('Сводка системы')),
-					E('div', {}, _('Архитектура и версии компонентов доступны во вкладке «Компоненты».')),
-					E('div', {}, _('Активных узлов: %s из %s').format(running, names.length))
-				]),
-				E('div', { 'class': 'fkp_diagnostic-page__card' }, [
-					E('b', { 'class': 'fkp_diagnostic-page__card-title' }, _('Лог olcrtc')),
-					E('textarea', { 'class': 'fkp_diagnostic-page__log', 'readonly': 'readonly' }, olLogs || _('Лог отсутствует'))
-				]),
-				E('div', { 'class': 'fkp_diagnostic-page__card' }, [
-					E('b', { 'class': 'fkp_diagnostic-page__card-title' }, _('Лог WDTT')),
-					E('textarea', { 'class': 'fkp_diagnostic-page__log', 'readonly': 'readonly' }, wdLogs || _('Лог отсутствует'))
-				])
+				E('div', { 'id': 'fkp_diagnostic-page-wiki' }),
+				E('div', { 'id': 'fkp_diagnostic-page-actions' }),
+				E('div', { 'id': 'fkp_diagnostic-page-system-info' })
 			])
 		]);
 	},
 
-	refresh: function() {
-		return this.load().then(function(data) {
-			var root = document.querySelector('.fkp_diagnostic-page');
-			if (root)
-				root.parentNode.replaceChild(this.render(data), root);
-		}.bind(this));
+	initController: function() {
+		var self = this;
+		var runBtn = document.getElementById('fkp_diagnostic-page-run-check');
+		if (runBtn) {
+			runBtn.replaceChildren(E('div', { 'class': 'fkp_diagnostic-page__run_check_wrapper' }, [
+				E('button', {
+					'class': 'btn cbi-button cbi-button-save',
+					'click': L.bind(function() { self.runChecks(); }, this)
+				}, _('Запустить проверку'))
+			]));
+		}
+		this.runChecks();
+	},
+
+	runChecks: function() {
+		var self = this;
+		var checks = document.getElementById('fkp_diagnostic-page-checks');
+		if (checks)
+			checks.replaceChildren(alertCard('loading', _('Проверка...'), _('Выполняется проверка служб.'), []));
+
+		return Promise.all([callStatus(), callLogs({ type: 'olcrtcwrt', lines: 50 }), callLogs({ type: 'wdtt', lines: 50 }),
+			callNftables(), callValidate(), callComponents()]).then(function(data) {
+			var status = data[0] || {};
+			var olLogs = (data[1] && data[1].log) || '';
+			var wdLogs = (data[2] && data[2].log) || '';
+			var nftables = data[3] || {};
+			var validation = data[4] || {};
+			var components = (data[5] && data[5].components) || {};
+			var nodes = status.nodes || {};
+			var names = Object.keys(nodes);
+			var running = names.filter(function(name) { return nodes[name] === 'running'; }).length;
+			var nftState = validation.valid ? 'success' : 'warning';
+
+			if (checks) {
+				checks.replaceChildren(
+					alertCard(running ? 'success' : 'warning', _('Службы туннелей'), _('Состояние узлов olcrtc и WDTT.'), [
+						{ key: _('Всего узлов'), value: String(names.length), state: 'success' },
+						{ key: _('Запущено'), value: String(running), state: running ? 'success' : 'warning' }
+					]),
+					alertCard(nftState, _('Проверка nftables'), validation.message || _('Проверка правил маршрутизации.'), [
+						{ key: _('Состояние'), value: validation.valid ? _('Корректно') : _('Ошибка или правила отсутствуют'), state: nftState }
+					]),
+					alertCard('success', _('Таблица nftables'), _('Текущие правила маршрутизации.'), [
+						{ key: _('Правила'), value: nftables.ruleset ? _('Созданы') : _('Правила не созданы'), state: nftables.ruleset ? 'success' : 'warning' }
+					])
+				);
+			}
+
+			var systemInfo = document.getElementById('fkp_diagnostic-page-system-info');
+			if (systemInfo) {
+				systemInfo.replaceChildren(E('div', { 'class': 'fkp_diagnostic-page__right-bar__system-info' }, [
+					E('b', { 'class': 'fkp_diagnostic-page__right-bar__system-info__title' }, _('Системная информация')),
+					E('div', { 'class': 'fkp_diagnostic-page__right-bar__system-info__row' }, [
+						E('span', {}, _('olcrtc') + ':'),
+						E('span', { 'class': 'fkp_diagnostic-page__right-bar__system-info__row__tag ' +
+							(components.olcrtc && components.olcrtc.installed ? '--success' : '--warning') },
+							(components.olcrtc && components.olcrtc.version) || _('не установлен'))
+					]),
+					E('div', { 'class': 'fkp_diagnostic-page__right-bar__system-info__row' }, [
+						E('span', {}, _('WDTT') + ':'),
+						E('span', { 'class': 'fkp_diagnostic-page__right-bar__system-info__row__tag ' +
+							(components.wdtt && components.wdtt.installed ? '--success' : '--warning') },
+							(components.wdtt && components.wdtt.version) || _('не установлен'))
+					]),
+					E('div', { 'class': 'fkp_diagnostic-page__right-bar__system-info__row' }, [
+						E('span', {}, _('sing-box') + ':'),
+						E('span', { 'class': 'fkp_diagnostic-page__right-bar__system-info__row__tag ' +
+							(components.sing_box && components.sing_box.installed ? '--success' : '--warning') },
+							(components.sing_box && components.sing_box.version) || _('не установлен'))
+					])
+				]));
+			}
+
+			var actions = document.getElementById('fkp_diagnostic-page-actions');
+			if (actions) {
+				actions.replaceChildren(
+					alertCard('success', _('Лог olcrtc'), _('Последние строки лога.'), [
+						{ key: _('Строки'), value: olLogs ? String(olLogs.split('\n').length) : _('Лог отсутствует'), state: 'success' }
+					]),
+					alertCard('success', _('Лог WDTT'), _('Последние строки лога.'), [
+						{ key: _('Строки'), value: wdLogs ? String(wdLogs.split('\n').length) : _('Лог отсутствует'), state: 'success' }
+					])
+				);
+			}
+		}).catch(function(err) {
+			if (checks)
+				checks.replaceChildren(alertCard('error', _('Ошибка диагностики'), err.message, []));
+		});
 	}
+};
+
+function createDiagnosticContent(section) {
+	var o = section.option(form.DummyValue, '_mount_node');
+	o.rawhtml = true;
+	o.cfgvalue = function() {
+		DiagnosticTab.initController();
+		return DiagnosticTab.render();
+	};
+}
+
+return baseclass.extend({
+	DiagnosticTab: DiagnosticTab,
+	createDiagnosticContent: createDiagnosticContent
 });

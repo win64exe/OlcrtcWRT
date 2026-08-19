@@ -1,20 +1,11 @@
 'use strict';
-'require view';
+'require baseclass';
+'require form';
 'require rpc';
 'require ui';
-'require view.olcrtcwrt.styles as styles';
 
-var callComponentsStatus = rpc.declare({
-	object: 'olcrtcwrt_components',
-	method: 'status',
-	reject: true
-});
-var callComponentsInstall = rpc.declare({
-	object: 'olcrtcwrt_components',
-	method: 'install',
-	params: { component: '', variant: '' },
-	reject: true
-});
+var callComponentsStatus = rpc.declare({ object: 'olcrtcwrt_components', method: 'status', reject: true });
+var callComponentsInstall = rpc.declare({ object: 'olcrtcwrt_components', method: 'install', params: { component: '', variant: '' }, reject: true });
 
 function text(value) {
 	return value || _('не установлено');
@@ -26,29 +17,59 @@ function cardState(item) {
 	return item.update_available ? _('Доступно обновление') : _('Установлено');
 }
 
-function createInfoRow(label, value) {
+function createInfoRow(label, value, extraClass) {
 	return E('div', { 'class': 'fkp_updates-page__component__info-row' }, [
 		E('span', { 'class': 'fkp_updates-page__component__info-label' }, label),
-		E('span', { 'class': 'fkp_updates-page__component__info-value' }, value)
+		E('span', { 'class': 'fkp_updates-page__component__info-value ' + (extraClass || '') }, value)
 	]);
 }
 
-return view.extend({
-	load: function() {
-		return callComponentsStatus().catch(function(err) {
-			ui.addNotification(null, E('p', _('Не удалось проверить компоненты: %s').format(err.message)));
-			return { architecture: '', components: {} };
+var UpdatesTab = {
+	render: function() {
+		return E('div', { 'id': 'updates-status', 'class': 'fkp_updates-page' }, [
+			E('div', { 'id': 'fkp_updates-components', 'class': 'fkp_updates-page__components' })
+		]);
+	},
+
+	initController: function() {
+		var self = this;
+		this.refresh();
+	},
+
+	refresh: function() {
+		var self = this;
+		var container = document.getElementById('fkp_updates-components');
+		if (container)
+			container.replaceChildren(E('div', { 'class': 'fkp_updates-page__component skeleton', 'style': 'height: 130px' }));
+		return callComponentsStatus().then(function(data) {
+			var components = (data && data.components) || {};
+			var columnA = [
+				self.renderCard('olcrtc', 'olcrtc', components.olcrtc),
+				self.renderCard('wdtt', 'WDTT', components.wdtt)
+			];
+			var columnB = [
+				self.renderCard('sing-box', 'sing-box', components.sing_box)
+			];
+			if (container) {
+				container.replaceChildren(
+					E('div', { 'class': 'fkp_updates-page__components-column' }, columnA),
+					E('div', { 'class': 'fkp_updates-page__components-column' }, columnB)
+				);
+			}
+		}).catch(function(err) {
+			if (container)
+				container.replaceChildren(E('div', { 'class': 'fkp_updates-page__component centered' }, err.message));
 		});
 	},
 
 	renderAction: function(component, variant, label, primary) {
 		return E('button', {
 			'class': 'btn cbi-button ' + (primary ? 'cbi-button-save' : ''),
-			'click': ui.createHandlerFn(this, 'installComponent', component, variant)
+			'click': L.bind(function() { this.installComponent(component, variant); }, this)
 		}, label);
 	},
 
-	renderCard: function(component, title, item, variants) {
+	renderCard: function(component, title, item) {
 		var installed = item && item.installed;
 		var actions = [];
 		if (component !== 'sing-box') {
@@ -63,9 +84,9 @@ return view.extend({
 			createInfoRow(_('Состояние'), cardState(item))
 		];
 		if (item && item.latest)
-			details.push(createInfoRow(_('Последняя версия'), item.latest));
+			details.push(createInfoRow(_('Последняя версия'), item.latest, 'fkp_updates-page__component__info-value--latest'));
 		if (item && item.extended_latest)
-			details.push(createInfoRow(_('Extended версия'), item.extended_latest));
+			details.push(createInfoRow(_('Extended версия'), item.extended_latest, 'fkp_updates-page__component__info-value--latest'));
 
 		return E('div', { 'class': 'fkp_updates-page__component' }, [
 			E('div', { 'class': 'fkp_updates-page__component__header' }, [
@@ -76,34 +97,6 @@ return view.extend({
 			E('div', { 'class': 'fkp_updates-page__component__details' }, details),
 			E('div', { 'class': 'fkp_updates-page__component__actions fkp_updates-page__component__actions--with-details' }, [
 				E('div', { 'class': 'fkp_updates-page__component__actions-main' }, actions)
-			])
-		]);
-	},
-
-	render: function(data) {
-		styles.inject();
-		var components = data.components || {};
-		var columnA = [
-			this.renderCard('olcrtc', 'olcrtc', components.olcrtc),
-			this.renderCard('wdtt', 'WDTT', components.wdtt)
-		];
-		var columnB = [
-			this.renderCard('sing-box', 'sing-box', components.sing_box)
-		];
-
-		return E('div', { 'class': 'cbi-map olcrtcwrt-forkop-page fkp_updates-page' }, [
-			E('h2', {}, _('Компоненты')),
-			E('p', {}, _('Установка компонентов в стиле forkop. APK содержит только LuCI-интерфейс, бинарники загружаются отдельно.')),
-			E('p', {}, _('Архитектура: %s').format(data.architecture || _('не определена'))),
-			E('div', { 'class': 'fkp_updates-page__components' }, [
-				E('div', { 'class': 'fkp_updates-page__components-column' }, columnA),
-				E('div', { 'class': 'fkp_updates-page__components-column' }, columnB)
-			]),
-			E('div', { 'class': 'cbi-section' }, [
-				E('button', {
-					'class': 'btn cbi-button cbi-button-neutral',
-					'click': ui.createHandlerFn(this, 'refresh')
-				}, _('Проверить обновления'))
 			])
 		]);
 	},
@@ -123,13 +116,19 @@ return view.extend({
 			ui.hideModal();
 			ui.addNotification(null, E('p', _('Ошибка установки: %s').format(err.message)));
 		});
-	},
-
-	refresh: function() {
-		return this.load().then(function(data) {
-			var content = document.querySelector('.fkp_updates-page');
-			if (content)
-				content.parentNode.replaceChild(this.render(data), content);
-		}.bind(this));
 	}
+};
+
+function createUpdatesContent(section) {
+	var o = section.option(form.DummyValue, '_mount_node');
+	o.rawhtml = true;
+	o.cfgvalue = function() {
+		UpdatesTab.initController();
+		return UpdatesTab.render();
+	};
+}
+
+return baseclass.extend({
+	UpdatesTab: UpdatesTab,
+	createUpdatesContent: createUpdatesContent
 });

@@ -1,8 +1,8 @@
 'use strict';
-'require view';
+'require baseclass';
+'require form';
 'require rpc';
 'require ui';
-'require view.olcrtcwrt.styles as styles';
 
 var callStatus = rpc.declare({ object: 'olcrtcwrt', method: 'status', reject: true });
 var callPing = rpc.declare({ object: 'olcrtcwrt', method: 'ping', reject: true });
@@ -20,18 +20,110 @@ function val(value, fallback) {
 	return value === undefined || value === null || value === '' ? fallback : value;
 }
 
-return view.extend({
+function renderTableCell(label, children) {
+	var cell = E('td', {}, children);
+	cell.setAttribute('data-label', label);
+	return cell;
+}
+
+function renderStateRow(text, className) {
+	return E('tr', { 'class': 'fkp_monitoring-page__state-row' }, [
+		E('td', { 'class': 'fkp_monitoring-page__state-cell', 'colspan': '7' }, [
+			E('div', { 'class': ['fkp_monitoring-page__state', className || ''].filter(Boolean).join(' ') }, text)
+		])
+	]);
+}
+
+var MonitoringTab = {
+	pollFn: null,
 	paused: false,
-	filter: 'active',
+	activeTab: 'active',
 	device: 'all',
 	search: '',
 	data: [{ nodes: {} }, {}, {}],
 
-	load: function() {
-		return Promise.all([callStatus(), callPing(), callTraffic()]).catch(function(err) {
-			ui.addNotification(null, E('p', _('Не удалось загрузить мониторинг: %s').format(err.message)));
-			return [{ nodes: {} }, {}, {}];
-		});
+	render: function() {
+		return E('div', { 'id': 'monitoring-status', 'class': 'fkp_monitoring-page' }, [
+			E('div', { 'class': 'fkp_monitoring-page__panel' }, [
+				E('div', { 'class': 'fkp_monitoring-page__controls' }, [
+					E('div', { 'class': 'fkp_monitoring-page__tabs' }, [
+						E('button', {
+							'id': 'monitoring-tab-active',
+							'class': 'btn cbi-button fkp_monitoring-page__tab fkp_monitoring-page__tab--active',
+							'type': 'button',
+							'click': L.bind(function() { this.setTab('active'); }, this)
+						}, E('span', { 'class': 'fkp_monitoring-page__tab-label' }, _('Активные'))),
+						E('button', {
+							'id': 'monitoring-tab-closed',
+							'class': 'btn cbi-button fkp_monitoring-page__tab',
+							'type': 'button',
+							'click': L.bind(function() { this.setTab('closed'); }, this)
+						}, E('span', { 'class': 'fkp_monitoring-page__tab-label' }, _('Остановленные')))
+					]),
+					E('div', { 'class': 'fkp_monitoring-page__filters' }, [
+						E('select', {
+							'id': 'monitoring-device-filter',
+							'class': 'cbi-input-select fkp_monitoring-page__device-filter',
+							'change': L.bind(function(ev) { this.device = ev.target.value; this.renderTable(); }, this)
+						}, [
+							E('option', { 'value': 'all' }, _('Все')),
+							E('option', { 'value': 'olcrtc' }, 'olcrtc'),
+							E('option', { 'value': 'WDTT' }, 'WDTT')
+						]),
+						E('label', { 'class': 'fkp_monitoring-page__search' }, [
+							E('span', { 'class': 'fkp_monitoring-page__search-icon' }, []),
+							E('input', {
+								'id': 'monitoring-search',
+								'class': 'cbi-input-text fkp_monitoring-page__search-input',
+								'type': 'search',
+								'placeholder': _('Поиск'),
+								'autocomplete': 'off',
+								'keyup': L.bind(function(ev) { this.search = ev.target.value; this.renderTable(); }, this)
+							})
+						])
+					]),
+					E('div', { 'class': 'fkp_monitoring-page__actions' }, [
+						E('button', {
+							'id': 'monitoring-pause-toggle',
+							'class': 'btn cbi-button fkp_monitoring-page__icon-button',
+							'title': _('Пауза обновления'),
+							'aria-label': _('Пауза обновления'),
+							'type': 'button',
+							'click': L.bind(function() { this.togglePause(); }, this)
+						}, _('⏸'))
+					])
+				]),
+				E('div', { 'id': 'monitoring-connections', 'class': 'fkp_monitoring-page__body' }, [
+					E('div', { 'class': 'fkp_monitoring-page__state fkp_monitoring-page__state--loading' },
+						_('Загрузка...'))
+				])
+			])
+		]);
+	},
+
+	initController: function() {
+		var self = this;
+		if (!this.pollFn) {
+			this.pollFn = L.bind(this.refresh, this);
+			L.poll.add(this.pollFn, 5);
+			this.refresh();
+		}
+	},
+
+	togglePause: function() {
+		this.paused = !this.paused;
+		var button = document.getElementById('monitoring-pause-toggle');
+		if (button)
+			button.classList.toggle('fkp_monitoring-page__icon-button--active', this.paused);
+	},
+
+	setTab: function(tab) {
+		this.activeTab = tab;
+		var active = document.getElementById('monitoring-tab-active');
+		var closed = document.getElementById('monitoring-tab-closed');
+		if (active) active.classList.toggle('fkp_monitoring-page__tab--active', tab === 'active');
+		if (closed) closed.classList.toggle('fkp_monitoring-page__tab--active', tab === 'closed');
+		this.renderTable();
 	},
 
 	filteredNames: function() {
@@ -39,7 +131,7 @@ return view.extend({
 		var names = Object.keys(nodes);
 		return names.filter(function(name) {
 			var running = nodes[name] === 'running';
-			var matchesState = this.filter === 'active' ? running : !running;
+			var matchesState = this.activeTab === 'active' ? running : !running;
 			var matchesDevice = this.device === 'all' || nodeType(name) === this.device;
 			var matchesSearch = !this.search || nodeLabel(name).toLowerCase().indexOf(this.search.toLowerCase()) !== -1;
 			return matchesState && matchesDevice && matchesSearch;
@@ -47,51 +139,54 @@ return view.extend({
 	},
 
 	renderTable: function() {
+		var body = document.getElementById('monitoring-connections');
+		if (!body)
+			return;
 		var status = this.data[0] || {};
 		var ping = this.data[1] || {};
 		var traffic = this.data[2] || {};
 		var nodes = status.nodes || {};
 		var names = this.filteredNames();
-		var rows = [];
 		var allNames = Object.keys(nodes);
+		var rows = [];
 
 		if (!names.length) {
-			rows.push(E('tr', { 'class': 'fkp_monitoring-page__state-row' }, [
-				E('td', { 'class': 'fkp_monitoring-page__state', 'colspan': '5' },
-					allNames.length ? _('Нет узлов, соответствующих фильтру') : _('Узлы не настроены'))
-			]));
+			rows.push(renderStateRow(
+				allNames.length ? _('Нет узлов, соответствующих фильтру') : _('Узлы не настроены'),
+				''));
 		}
 
 		names.forEach(function(name) {
-			var item = traffic[name] || {};
 			var running = nodes[name] === 'running';
+			var p = ping[name] || '';
+			var t = traffic[name] || {};
 			rows.push(E('tr', {}, [
-				E('td', { 'data-label': _('Узел') }, E('strong', {}, nodeLabel(name))),
-				E('td', { 'data-label': _('Тип') }, nodeType(name)),
-				E('td', { 'data-label': _('Состояние') }, running ? _('Работает') : _('Остановлен')),
-				E('td', { 'data-label': _('Ping') }, val(ping[name], '-') + (ping[name] ? ' ms' : '')),
-				E('td', { 'data-label': _('Трафик RX / TX') }, val(item.rx, '0') + ' / ' + val(item.tx, '0'))
+				renderTableCell(_('Узел'), E('b', {}, nodeLabel(name))),
+				renderTableCell(_('Тип'), E('span', { 'class': 'fkp_monitoring-page__network' }, nodeType(name))),
+				renderTableCell(_('Состояние'), E('span', { 'class': 'fkp_monitoring-page__route' },
+					running ? _('Работает') : _('Остановлен'))),
+				renderTableCell(_('Ping'), E('span', { 'class': 'fkp_monitoring-page__value' },
+					p ? (p + ' ms') : '-')),
+				renderTableCell(_('RX'), E('span', { 'class': 'fkp_monitoring-page__value' }, val(t.rx, '0'))),
+				renderTableCell(_('TX'), E('span', { 'class': 'fkp_monitoring-page__value' }, val(t.tx, '0'))),
+				renderTableCell(_('Тип узла'), E('span', { 'class': 'fkp_monitoring-page__value' }, name))
 			]));
 		});
 
-		return E('div', { 'class': 'fkp_monitoring-page__table-wrap' }, [
-			E('table', { 'class': 'fkp_monitoring-page__table' }, [
+		body.replaceChildren(E('div', { 'class': 'fkp_monitoring-page__table-wrap' }, [
+			E('table', { 'class': 'table cbi-section-table fkp_monitoring-page__table' }, [
 				E('thead', {}, [E('tr', {}, [
 					E('th', {}, _('Узел')),
 					E('th', {}, _('Тип')),
 					E('th', {}, _('Состояние')),
 					E('th', {}, _('Ping')),
-					E('th', {}, _('Трафик RX / TX'))
+					E('th', {}, _('RX')),
+					E('th', {}, _('TX')),
+					E('th', {}, _('Секция'))
 				])]),
 				E('tbody', {}, rows)
 			])
-		]);
-	},
-
-	updateBody: function() {
-		var body = document.getElementById('olcrtcwrt-monitoring-body');
-		if (body)
-			body.replaceChildren(this.renderTable());
+		]));
 		this.updateCounters();
 	},
 
@@ -99,109 +194,37 @@ return view.extend({
 		var nodes = ((this.data[0] || {}).nodes || {});
 		var names = Object.keys(nodes);
 		var active = names.filter(function(name) { return nodes[name] === 'running'; }).length;
-		var activeTab = document.getElementById('olcrtcwrt-monitoring-active');
-		var closedTab = document.getElementById('olcrtcwrt-monitoring-closed');
-		if (activeTab) activeTab.textContent = _('Активные') + ' ' + active;
-		if (closedTab) closedTab.textContent = _('Остановленные') + ' ' + (names.length - active);
-	},
-
-	setFilter: function(filter) {
-		this.filter = filter;
-		this.updateBody();
-		this.updateTabStyles();
-	},
-
-	updateTabStyles: function() {
-		var active = document.getElementById('olcrtcwrt-monitoring-active');
-		var closed = document.getElementById('olcrtcwrt-monitoring-closed');
-		if (active) active.classList.toggle('fkp_monitoring-page__tab--active', this.filter === 'active');
-		if (closed) closed.classList.toggle('fkp_monitoring-page__tab--active', this.filter === 'closed');
-	},
-
-	togglePause: function() {
-		this.paused = !this.paused;
-		var button = document.getElementById('olcrtcwrt-monitoring-pause');
-		if (button) button.textContent = this.paused ? _('Продолжить') : _('Пауза');
-	},
-
-	render: function(data) {
-		styles.inject();
-		this.data = data;
-		this.pollFn = L.bind(this.poll, this);
-		L.poll.add(this.pollFn, 5);
-		var self = this;
-		var controls = E('div', { 'class': 'fkp_monitoring-page__controls' }, [
-			E('div', { 'class': 'fkp_monitoring-page__tabs' }, [
-				E('button', {
-					'id': 'olcrtcwrt-monitoring-active',
-					'class': 'btn cbi-button fkp_monitoring-page__tab fkp_monitoring-page__tab--active',
-					'click': function() { self.setFilter('active'); }
-				}, _('Активные')),
-				E('button', {
-					'id': 'olcrtcwrt-monitoring-closed',
-					'class': 'btn cbi-button fkp_monitoring-page__tab',
-					'click': function() { self.setFilter('closed'); }
-				}, _('Остановленные'))
-			]),
-			E('div', { 'class': 'fkp_monitoring-page__filters' }, [
-				E('select', {
-					'class': 'cbi-input-select fkp_monitoring-page__device-filter',
-					'change': function(ev) { self.device = ev.target.value; self.updateBody(); }
-				}, [
-					E('option', { 'value': 'all' }, _('Все компоненты')),
-					E('option', { 'value': 'olcrtc' }, 'olcrtc'),
-					E('option', { 'value': 'WDTT' }, 'WDTT')
-				]),
-				E('input', {
-					'class': 'cbi-input-text fkp_monitoring-page__search-input',
-					'type': 'search',
-					'placeholder': _('Поиск'),
-					'keyup': function(ev) { self.search = ev.target.value; self.updateBody(); }
-				})
-			]),
-			E('div', { 'class': 'fkp_monitoring-page__actions' }, [
-				E('button', {
-					'id': 'olcrtcwrt-monitoring-pause',
-					'class': 'btn cbi-button fkp_monitoring-page__icon-button',
-					'click': function() { self.togglePause(); }
-				}, _('Пауза')),
-				E('button', {
-					'class': 'btn cbi-button fkp_monitoring-page__icon-button',
-					'click': ui.createHandlerFn(this, 'refresh')
-				}, _('Обновить'))
-			])
-		]);
-
-		return E('div', { 'class': 'cbi-map olcrtcwrt-forkop-page fkp_monitoring-page' }, [
-			E('h2', {}, _('Мониторинг')),
-			E('p', {}, _('Состояние туннелей olcrtc и WDTT, задержка и трафик.')),
-			controls,
-			E('div', { 'id': 'olcrtcwrt-monitoring-body', 'class': 'fkp_monitoring-page__body' }, this.renderTable()),
-			E('div', { 'class': 'cbi-section-descr' }, _('Обновление выполняется каждые 5 секунд.'))
-		]);
-	},
-
-	poll: function() {
-		if (this.paused)
-			return;
-		return Promise.all([callStatus(), callPing(), callTraffic()]).then(function(data) {
-			this.data = data;
-			this.updateBody();
-		}.bind(this)).catch(function(err) {
-			console.warn('olcrtcwrt monitoring update failed:', err);
-		});
+		var activeTab = document.getElementById('monitoring-tab-active');
+		var closedTab = document.getElementById('monitoring-tab-closed');
+		if (activeTab) activeTab.replaceChildren(E('span', { 'class': 'fkp_monitoring-page__tab-label' },
+			_('Активные') + ' ' + active));
+		if (closedTab) closedTab.replaceChildren(E('span', { 'class': 'fkp_monitoring-page__tab-label' },
+			_('Остановленные') + ' ' + (names.length - active)));
 	},
 
 	refresh: function() {
-		return this.load().then(function(data) {
-			this.data = data;
-			this.updateBody();
-		}.bind(this));
-	},
-
-	remove: function() {
-		if (this.pollFn)
-			L.poll.remove(this.pollFn);
-		return this.super('remove', arguments);
+		var self = this;
+		if (this.paused)
+			return Promise.resolve();
+		return Promise.all([callStatus(), callPing(), callTraffic()]).then(function(data) {
+			self.data = data;
+			self.renderTable();
+		}).catch(function(err) {
+			console.error('olcrtcwrt monitoring refresh error:', err);
+		});
 	}
+};
+
+function createMonitoringContent(section) {
+	var o = section.option(form.DummyValue, '_mount_node');
+	o.rawhtml = true;
+	o.cfgvalue = function() {
+		MonitoringTab.initController();
+		return MonitoringTab.render();
+	};
+}
+
+return baseclass.extend({
+	MonitoringTab: MonitoringTab,
+	createMonitoringContent: createMonitoringContent
 });
